@@ -20,8 +20,7 @@ export default function App() {
           screenOptions={{
             headerShown: false,
           }}
-          // 2. LÉPÉS: Átmenetileg a Chatet tesszük kezdőképernyőnek a teszteléshez!
-          initialRouteName="Chat"
+          initialRouteName="Home"
         >
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
