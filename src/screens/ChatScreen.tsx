@@ -1,26 +1,11 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    FlatList,
-    Image,
-    StyleSheet,
-    TouchableOpacity,
-    type ListRenderItem,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-export interface ChatListItem {
-    id: string;
-    name: string;
-    time: string;
-    message: string;
-    unread: boolean;
-    avatar: string;
-}
+import { View, Text, FlatList, Image, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+// You'll need to install vector icons if you don't already have them,
+// e.g., npm install @expo/vector-icons
+import { Ionicons } from '@expo/vector-icons';
 
 // Dummy data based on the wireframe image
-const MOCK_CHATS: ChatListItem[] = [
+const MOCK_CHATS = [
     { id: '1', name: 'starryskies23', time: '1d', message: 'Started following you', unread: true, avatar: 'https://i.pravatar.cc/150?img=1' },
     { id: '2', name: 'nebulanomad', time: '1d', message: 'Liked your post', unread: true, avatar: 'https://i.pravatar.cc/150?img=11' },
     { id: '3', name: 'emberecho', time: '2d', message: '| Happy birthday!!! 🎉', unread: true, avatar: 'https://i.pravatar.cc/150?img=5' },
@@ -33,7 +18,7 @@ const MOCK_CHATS: ChatListItem[] = [
 
 export default function ChatScreen() {
 
-    const renderItem: ListRenderItem<ChatListItem> = ({ item }) => (
+    const renderItem = ({ item }) => (
         <TouchableOpacity style={styles.chatItem}>
             {/* Container for unread indicator to maintain alignment */}
             <View style={styles.unreadIndicatorContainer}>
@@ -65,13 +50,47 @@ export default function ChatScreen() {
             </View>
 
             {/* Main Chat List */}
-            <FlatList<ChatListItem>
+            <FlatList
                 data={MOCK_CHATS}
-                keyExtractor={(item) => item.id}
+                keyExtractor={item => item.id}
                 renderItem={renderItem}
                 contentContainerStyle={styles.listContainer}
             />
 
+            {/* Bottom Navigation Bar */}
+            <View style={styles.bottomNav}>
+                <Image
+                    source={require('../../assets/icons/home_icon.png')} // Replace with your path
+                    style={styles.navIcon}
+                    tintColor="#FFFFFF" // White color
+                />
+                <Image
+                    source={require('../../assets/icons/search_icon.png')} // Replace with your path
+                    style={styles.navIcon}
+                    tintColor="#FFFFFF" // White color
+                />
+
+                {/* Using a vector icon for Plus for simplicity */}
+                <Ionicons name="add-circle-outline" size={32} color="#FFFFFF" />
+
+                {/* Chat icon with badge */}
+                <View style={styles.navIconContainer}>
+                    <Image
+                        source={require('../../assets/icons/chat_icon.png')} // Replace with your path
+                        style={styles.navIcon}
+                        tintColor="#FFFFFF" // White color
+                    />
+                    <View style={styles.badgeContainer}>
+                        <Text style={styles.badgeText}>5</Text>
+                    </View>
+                </View>
+
+                <Image
+                    source={require('../../assets/icons/profile_icon.png')} // Replace with your path
+                    style={styles.navIcon}
+                    tintColor="#FFFFFF" // White color
+                />
+            </View>
         </SafeAreaView>
     );
 }
@@ -99,7 +118,7 @@ const styles = StyleSheet.create({
         height: 28,
     },
     listContainer: {
-        paddingBottom: 24,
+        paddingBottom: 80, // Space for bottom nav
     },
     chatItem: {
         flexDirection: 'row',
@@ -148,5 +167,45 @@ const styles = StyleSheet.create({
     messageText: {
         color: '#B0B4C8', // Sightly lighter subtext
         fontSize: 15,
+    },
+    bottomNav: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        backgroundColor: '#15192B', // Slightly lighter dark blue
+        paddingVertical: 15,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        borderTopWidth: 1,
+        borderTopColor: '#2A2E43',
+    },
+    navIconContainer: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    navIcon: {
+        width: 24,
+        height: 24,
+    },
+    badgeContainer: {
+        position: 'absolute',
+        top: -5,
+        right: -8,
+        backgroundColor: '#FF3B30', // Notification red
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#15192B', // Match bottom nav background
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
 });
