@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { PanResponder, Text, View } from 'react-native';
 import Animated, {
     Extrapolation,
@@ -13,6 +13,7 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
+    withTiming,
 } from 'react-native-reanimated';
 import { Profile } from '../../data/dummyProfiles';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
@@ -25,8 +26,26 @@ export interface CardProps {
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-export function ProfileCard({ profile, onSwipe, isTop }: CardProps) {
+export interface ProfileCardRef {
+    swipeLeft: () => void;
+    swipeRight: () => void;
+}
+
+export const ProfileCard = forwardRef<ProfileCardRef, CardProps>(({ profile, onSwipe, isTop }, ref) => {
     const translateX = useSharedValue(0);
+
+    useImperativeHandle(ref, () => ({
+        swipeLeft: () => {
+            translateX.value = withTiming(-500, { duration: 300 }, () => {
+                runOnJS(onSwipe)('left');
+            });
+        },
+        swipeRight: () => {
+            translateX.value = withTiming(500, { duration: 300 }, () => {
+                runOnJS(onSwipe)('right');
+            });
+        },
+    }));
 
     useEffect(() => {
         translateX.value = 0;
@@ -80,7 +99,7 @@ export function ProfileCard({ profile, onSwipe, isTop }: CardProps) {
     if (!isTop) {
         return (
             <View className="absolute inset-0 overflow-hidden rounded-3xl border border-white/10">
-                <ImageWithFallback source={profile.image} alt={profile.name} className="h-full w-full" />
+                <ImageWithFallback source={profile.avatarUrl} alt={profile.displayName} className="h-full w-full" />
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
                     style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
@@ -105,7 +124,7 @@ export function ProfileCard({ profile, onSwipe, isTop }: CardProps) {
                     elevation: 12,
                 }}
             >
-                <ImageWithFallback source={profile.image} alt={profile.name} className="h-full w-full" />
+                <ImageWithFallback source={profile.avatarUrl} alt={profile.displayName} className="h-full w-full" />
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']}
                     locations={[0, 0.45, 1]}
@@ -179,7 +198,7 @@ export function ProfileCard({ profile, onSwipe, isTop }: CardProps) {
                     <View className="mb-1">
                         <View className="mb-0.5 flex-row items-center gap-2">
                             <Text className="text-2xl font-bold text-white">
-                                {profile.name}, {profile.age}
+                                {profile.displayName}, {profile.age}
                             </Text>
                             <View
                                 className="h-5 w-5 items-center justify-center rounded-full"
@@ -263,4 +282,4 @@ export function ProfileCard({ profile, onSwipe, isTop }: CardProps) {
             </View>
         </AnimatedView>
     );
-}
+});

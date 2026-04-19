@@ -1,14 +1,13 @@
 // src/data/dummyProfiles.ts
 // Dummy profile data for the FelfedezesSimulator (Barátkereső / Party Buddy swipe feature)
 
-export interface Profile {
-    id: number;
-    name: string;
+import { User } from '../types/user';
+
+export interface Profile extends User {
     age: number;
     distance: string;
     education: string;
     likesYou: boolean;
-    image: string;
     event: { name: string; date: string };
     mutuals: number;
 }
@@ -27,36 +26,64 @@ export const RAMA_AVATAR =
 
 export const profilesSeed: Profile[] = [
     {
-        id: 1,
-        name: 'Citra',
+        id: 'p1',
+        displayName: 'Citra',
+        uniqueHandle: '@citra_techno',
+        avatarUrl: CITRA_IMAGE,
         age: 23,
         distance: '2.5 km away',
         education: 'Master of Information Technology, 2025',
         likesYou: true,
-        image: CITRA_IMAGE,
         event: { name: 'Boiler Room', date: '25 Nov' },
         mutuals: 3,
     },
     {
-        id: 2,
-        name: 'Alya',
+        id: 'p2',
+        displayName: 'Alya',
+        uniqueHandle: '@alya_vibes',
+        avatarUrl: PROFILE_2,
         age: 24,
         distance: '3.1 km away',
         education: 'Bachelor of Fine Arts, 2024',
         likesYou: false,
-        image: PROFILE_2,
         event: { name: 'Djakarta Warehouse', date: '02 Dec' },
         mutuals: 5,
     },
     {
-        id: 3,
-        name: 'Dano',
+        id: 'p3',
+        displayName: 'Dano',
+        uniqueHandle: '@dano_beats',
+        avatarUrl: PROFILE_3,
         age: 27,
         distance: '1.8 km away',
         education: 'MBA Business Design, 2023',
         likesYou: false,
-        image: PROFILE_3,
         event: { name: 'We The Fest', date: '14 Dec' },
         mutuals: 2,
     },
+];
+
+export interface ChatMessage {
+    id: string;
+    sender: User;
+    content: string;
+    timestamp: string;
+    isUnread: boolean;
+}
+
+export const chatsSeed: ChatMessage[] = [
+    {
+        id: 'msg_1',
+        sender: profilesSeed[0],
+        content: 'Hey! Are you going to Boiler Room?',
+        timestamp: '1h ago',
+        isUnread: true,
+    },
+    {
+        id: 'msg_2',
+        sender: profilesSeed[1],
+        content: 'Loved your playlist!',
+        timestamp: '3h ago',
+        isUnread: false,
+    }
 ];

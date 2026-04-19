@@ -3,6 +3,8 @@ import { View, Text, FlatList, Image, StyleSheet, SafeAreaView, TouchableOpacity
 // You'll need to install vector icons if you don't already have them,
 // e.g., npm install @expo/vector-icons
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import { LoginRequiredShield } from '../components/ui/LoginRequiredShield';
 
 // Dummy data based on the wireframe image
 const MOCK_CHATS = [
@@ -17,6 +19,11 @@ const MOCK_CHATS = [
 ];
 
 export default function ChatScreen() {
+    const { isGuest } = useAuth();
+
+    if (isGuest) {
+        return <LoginRequiredShield />;
+    }
 
     const renderItem = ({ item }) => (
         <TouchableOpacity style={styles.chatItem}>

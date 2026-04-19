@@ -4,7 +4,7 @@
 // All sub-components live in src/components/match/ and src/components/ui/.
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
@@ -12,9 +12,11 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ProfileCard } from '../components/match/ProfileCard';
+import { ProfileCard, ProfileCardRef } from '../components/match/ProfileCard';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Profile, profilesSeed } from '../data/dummyProfiles';
+import { useAuth } from '../context/AuthContext';
+import { LoginRequiredShield } from '../components/ui/LoginRequiredShield';
 
 type FelfedezesSimulatorProps = {
     /** Extra bottom padding when embedded in HomeScreen so content stays above the floating tab bar */
@@ -22,11 +24,14 @@ type FelfedezesSimulatorProps = {
 };
 
 export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimulatorProps) {
+    const { isGuest } = useAuth();
+
     // Per project rules (Section 5 – Match Screen Flow), the swipe view is the DEFAULT.
     // The pre-filtering search form ("Kivel bulizol ma?") is bypassed on mount.
     const [cards, setCards] = useState<Profile[]>(profilesSeed);
     const [removed, setRemoved] = useState<Profile[]>([]);
     const [swipeAction, setSwipeAction] = useState<'like' | 'pass' | null>(null);
+    const topCardRef = useRef<ProfileCardRef>(null);
 
     const flashOpacity = useSharedValue(0);
     const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
@@ -52,6 +57,10 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
         setCards([...removed].reverse());
         setRemoved([]);
     };
+
+    if (isGuest) {
+        return <LoginRequiredShield />;
+    }
 
     return (
         <SafeAreaView
@@ -115,7 +124,7 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
                                 </View>
                             ))}
                             <View className="absolute inset-0" style={{ zIndex: cards.length }}>
-                                <ProfileCard profile={cards[0]} onSwipe={handleSwipe} isTop={true} />
+                                <ProfileCard ref={topCardRef} profile={cards[0]} onSwipe={handleSwipe} isTop={true} />
                             </View>
                         </View>
                     )}
@@ -126,7 +135,7 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
                     <View className="flex-shrink-0 flex-row items-center justify-center gap-8 py-4">
                         {/* Pass button */}
                         <Pressable
-                            onPress={() => handleSwipe('left')}
+                            onPress={() => topCardRef.current?.swipeLeft()}
                             className="h-16 w-16 items-center justify-center rounded-full border"
                             style={{
                                 backgroundColor: 'rgba(239,68,68,0.1)',
@@ -147,7 +156,7 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
 
                         {/* Like / Going button */}
                         <Pressable
-                            onPress={() => handleSwipe('right')}
+                            onPress={() => topCardRef.current?.swipeRight()}
                             className="h-16 w-16 items-center justify-center rounded-full border"
                             style={{
                                 backgroundColor: 'rgba(34,197,94,0.1)',

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
 
-export default function LoginScreen({ navigation }: any) {
+export default function LoginScreen() {
+    const { signIn, continueAsGuest } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -22,11 +24,7 @@ export default function LoginScreen({ navigation }: any) {
             });
 
             if (response.data && response.data.token) {
-                await AsyncStorage.setItem('auth_token', response.data.token);
-                // For demonstrating successful authentication, we navigate somewhere or show an alert for now.
-                // Depending on the navigation structure, typically the App.tsx listens to token changes,
-                // but since we only have a login screen configured statically so far, we show an alert.
-                navigation.replace('Home');
+                await signIn(response.data.token);
             } else {
                 Alert.alert('Hiba', 'Váratlan válasz a szervertől.');
             }
@@ -43,7 +41,14 @@ export default function LoginScreen({ navigation }: any) {
     };
 
     return (
-        <View className="flex-1 justify-center px-6 bg-gray-900">
+        <View className="flex-1 justify-center px-6 bg-gray-900 relative">
+            <TouchableOpacity 
+                onPress={continueAsGuest}
+                className="absolute top-16 right-6 w-10 h-10 items-center justify-center rounded-full bg-gray-800/80 border border-white/10 z-10"
+            >
+                <Ionicons name="close" size={24} color="#9ca3af" />
+            </TouchableOpacity>
+
             <View className="mb-10 items-center">
                 <Text className="text-white text-4xl font-bold mb-2">PartyFinder</Text>
                 <Text className="text-gray-400 text-base">Jelentkezzen be a fiókjába</Text>

@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # PartyFinder Mobile - System Instructions & Context
 
 ## 🎯 1. Project Overview & Vision
