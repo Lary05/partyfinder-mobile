@@ -1,685 +1,347 @@
-import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    ScrollView,
-    Pressable,
-    StyleSheet,
-    Modal,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withTiming,
-    withSpring,
-    FadeInUp,
-    FadeOutUp,
-    FadeIn,
-    FadeOut,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, ScrollView, Pressable, StyleSheet } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import Animated, { FadeIn, FadeOut, ZoomIn, ZoomOut, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ImageWithFallback } from '../components/ui/ImageWithFallback';
+const HERO = "https://images.unsplash.com/photo-1585362606685-c35cd0cc4d4b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVubmluZyUyMGFzaWFuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGRhcmslMjBtb29keSUyMGVkaXRvcmlhbCUyMGhpZ2glMjBmYXNoaW9ufGVufDF8fHx8MTc3NjYzODY1NXww&ixlib=rb-4.1.0&q=80&w=1080";
+const ALBUM = "https://images.unsplash.com/photo-1744908135320-94654608a753?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYXJrJTIwbXVzaWMlMjBhbGJ1bSUyMGNvdmVyJTIwdmlueWwlMjBuZW9uJTIwYWJzdHJhY3R8ZW58MXx8fHwxNzc2NjM4NjU2fDA&ixlib=rb-4.1.0&q=80&w=1080";
+const EVENT_IMG = "https://images.unsplash.com/photo-1765738042644-a290f0a4a29f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdodGNsdWIlMjBldmVudCUyMHZlbnVlJTIwZGFyayUyMG1vb2R5JTIwYXRtb3NwaGVyaWMlMjBsaWdodHN8ZW58MXx8fHwxNzc2NjM4NjU3fDA&ixlib=rb-4.1.0&q=80&w=1080";
+const PHOTO_1 = "https://images.unsplash.com/photo-1758764340872-7c07d883227f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHdvbWFuJTIwY2FzdWFsJTIwc3RyZWV0JTIwc3R5bGUlMjB1cmJhbiUyMHBvcnRyYWl0JTIwY2FuZGlkfGVufDF8fHx8MTc3NjYzODY2MHww&ixlib=rb-4.1.0&q=80&w=1080";
+const PHOTO_2 = "https://images.unsplash.com/photo-1766038803021-88d7cccfa5a1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGxhdWdoaW5nJTIwam95ZnVsJTIwb3V0ZG9vciUyMHJvb2Z0b3AlMjBnb2xkZW4lMjBob3VyfGVufDF8fHx8MTc3NjYzODY2MHww&ixlib=rb-4.1.0&q=80&w=1080";
+const PHOTO_3 = "https://images.unsplash.com/photo-1643325299951-7bdb4de5843b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHRlY2hubyUyMHJhdmUlMjBjbHViJTIwbmVvbiUyMGxpZ2h0cyUyMGRhbmNlfGVufDF8fHx8MTc3NjYzODY2MHww&ixlib=rb-4.1.0&q=80&w=1080";
 
-/* ── Images ─────────────────────────────────────────────────── */
-const HERO = 'https://images.unsplash.com/photo-1585362606685-c35cd0cc4d4b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVubmluZyUyMGFzaWFuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGRhcmslMjBtb29keSUyMGVkaXRvcmlhbCUyMGhpZ2glMjBmYXNoaW9ufGVufDF8fHx8MTc3NjYzODY1NXww&ixlib=rb-4.1.0&q=80&w=1080';
-const ALBUM = 'https://images.unsplash.com/photo-1744908135320-94654608a753?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYXJrJTIwbXVzaWMlMjBhbGJ1bSUyMGNvdmVyJTIwdmlueWwlMjBuZW9uJTIwYWJzdHJhY3R8ZW58MXx8fHwxNzc2NjM4NjU2fDA&ixlib=rb-4.1.0&q=80&w=1080';
-const EVENT_IMG = 'https://images.unsplash.com/photo-1765738042644-a290f0a4a29f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdodGNsdWIlMjBldmVudCUyMHZlbnVlJTIwZGFyayUyMG1vb2R5JTIwYXRtb3NwaGVyaWMlMjBsaWdodHN8ZW58MXx8fHwxNzc2NjM4NjU3fDA&ixlib=rb-4.1.0&q=80&w=1080';
-const PHOTO_1 = 'https://images.unsplash.com/photo-1758764340872-7c07d883227f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHdvbWFuJTIwY2FzdWFsJTIwc3RyZWV0JTIwc3R5bGUlMjB1cmJhbiUyMHBvcnRyYWl0JTIwY2FuZGlkfGVufDF8fHx8MTc3NjYzODY2MHww&ixlib=rb-4.1.0&q=80&w=1080';
-const PHOTO_2 = 'https://images.unsplash.com/photo-1766038803021-88d7cccfa5a1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyM29tYW4lMjBsYXVnaGluZyUyMGpveWZ1bCUyMG91dGRvb3IlMjByb29mdG9wJTIwZ29sZGVuJTIwaG91cnxlbnwwfHwwfDE3NzY2Mzg2NjB8MA&ixlib=rb-4.1.0&q=80&w=1080';
-const PHOTO_3 = 'https://images.unsplash.com/photo-1643325299951-7bdb4de5843b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHRlY2hubyUyMHJhdmUlMjBjbHViJTIwbmVvbiUyMGxpZ2h0cyUyMGRhbmNlfGVufDF8fHx8MTc3NjYzODY2MHww&ixlib=rb-4.1.0&q=80&w=1080';
-
-/* ── Vibe tags ────────────────────────────────────────────────── */
 const tags = [
-    { label: 'Techno', glow: true, color: 'purple' },
-    { label: 'Night Owl', glow: false, color: 'blue' },
-    { label: 'Raves', glow: true, color: 'purple' },
-    { label: 'Drinks 🍸', glow: false, color: 'none' },
-    { label: 'House Music', glow: true, color: 'blue' },
-    { label: 'Early Mornings 🌅', glow: false, color: 'none' },
-    { label: 'DJ Culture', glow: true, color: 'purple' },
-    { label: 'Berlin', glow: false, color: 'none' },
-    { label: 'Photography 📷', glow: false, color: 'none' },
-    { label: 'Festivals', glow: true, color: 'blue' },
+  { label: "Techno", glow: true, color: "purple" },
+  { label: "Night Owl", glow: false, color: "blue" },
+  { label: "Raves", glow: true, color: "purple" },
+  { label: "Drinks 🍸", glow: false, color: "none" },
+  { label: "House Music", glow: true, color: "blue" },
+  { label: "Early Mornings 🌅", glow: false, color: "none" },
+  { label: "DJ Culture", glow: true, color: "purple" },
+  { label: "Berlin", glow: false, color: "none" },
+  { label: "Photography 📷", glow: false, color: "none" },
+  { label: "Festivals", glow: true, color: "blue" },
 ];
 
-const tagStyles: Record<string, { bg: string; border: string; text: string; shadowColor?: string; shadowOpacity?: number; shadowRadius?: number; elevation?: number }> = {
-    purple: { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.45)', text: '#c4b5fd', shadowColor: '#8b5cf6', shadowOpacity: 0.25, shadowRadius: 10, elevation: 4 },
-    blue: { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.45)', text: '#93c5fd', shadowColor: '#3b82f6', shadowOpacity: 0.25, shadowRadius: 10, elevation: 4 },
-    none: { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)', text: 'rgba(255,255,255,0.65)' },
+const tagStyles: Record<string, { bg: string; border: string; text: string; shadowColor: string }> = {
+  purple: { bg: "rgba(139,92,246,0.12)", border: "rgba(139,92,246,0.45)", text: "#c4b5fd", shadowColor: "#8b5cf6" },
+  blue: { bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.45)", text: "#93c5fd", shadowColor: "#3b82f6" },
+  none: { bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.1)", text: "rgba(255,255,255,0.65)", shadowColor: "transparent" },
 };
 
-/* ── Animated Button Primitive ──────────────────────────── */
-function AnimatedBtn({ onPress, style, children, scaleDownTo = 0.9 }: { onPress?: () => void; style?: any; children: React.ReactNode; scaleDownTo?: number }) {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-    return (
-        <Animated.View style={animStyle}>
-            <Pressable
-                onPressIn={() => { scale.value = withTiming(scaleDownTo, { duration: 100 }); }}
-                onPressOut={() => { scale.value = withTiming(1, { duration: 150 }); }}
-                onPress={onPress}
-                style={style}
-            >
-                {children}
-            </Pressable>
-        </Animated.View>
-    );
-}
-
-/* ── Spotify track ──────────────────────────────────────────── */
 function SpotifyCard() {
-    const [playing, setPlaying] = useState(true);
-    const progress = 38; // Static UI percentage in React Native version
+  const [playing, setPlaying] = useState(true);
+  const progress = 38;
 
-    return (
-        <View style={styles.spotifyCard}>
-            <View className="flex-row items-center mb-3" style={{ gap: 12 }}>
-                <View style={styles.spotifyAlbum}>
-                    <ImageWithFallback source={ALBUM} alt="Album" style={{ width: '100%', height: '100%' }} />
-                </View>
-                <View className="flex-1 min-w-0">
-                    <Text className="text-white text-sm font-semibold" numberOfLines={1}>Closer (Remastered)</Text>
-                    <Text className="text-gray-500 text-xs mt-0.5" numberOfLines={1}>Nine Inch Nails</Text>
-                </View>
-                <View className="flex-row items-center flex-shrink-0" style={{ gap: 8 }}>
-                    <AnimatedBtn
-                        onPress={() => setPlaying(!playing)}
-                        style={[
-                            styles.spotifyPlayBtn,
-                            playing ? styles.spotifyPlayBtnActive : styles.spotifyPlayBtnInactive,
-                        ]}
-                    >
-                        {playing ? (
-                            <View className="flex-row items-center" style={{ gap: 2 }}>
-                                <View style={styles.equalizerBar1} />
-                                <View style={styles.equalizerBar2} />
-                            </View>
-                        ) : (
-                            <View style={styles.playArrow} />
-                        )}
-                    </AnimatedBtn>
-                    <View style={styles.spotifyIconBox}>
-                        <Ionicons name="musical-notes" size={14} color="#000" />
-                    </View>
-                </View>
-            </View>
-            <View className="flex-row items-center" style={{ gap: 8 }}>
-                <Text style={styles.timeText}>1:43</Text>
-                <View style={styles.progressBarBg}>
-                    {/* Linear Gradient via expo */}
-                    <LinearGradient
-                        colors={['#1DB954', '#16a34a']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[StyleSheet.absoluteFillObject, { width: `${progress}%`, borderRadius: 999 }]}
-                    />
-                </View>
-                <Text style={styles.timeText}>4:29</Text>
-            </View>
+  const pulse1 = useSharedValue(1);
+  const pulse2 = useSharedValue(1);
+
+  useEffect(() => {
+    if (playing) {
+      pulse1.value = withRepeat(withSequence(withTiming(0.4, { duration: 400 }), withTiming(1, { duration: 400 })), -1, true);
+      pulse2.value = withRepeat(withSequence(withTiming(0.4, { duration: 300 }), withTiming(1, { duration: 300 })), -1, true);
+    } else {
+      pulse1.value = 1;
+      pulse2.value = 1;
+    }
+  }, [playing]);
+
+  const p1Style = useAnimatedStyle(() => ({ opacity: pulse1.value }));
+  const p2Style = useAnimatedStyle(() => ({ opacity: pulse2.value }));
+
+  return (
+    <View className="rounded-3xl p-4 border overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)" }}>
+      <View className="flex-row items-center mb-3">
+        <View className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 mr-3">
+          <ImageWithFallback source={ALBUM} alt="Album" className="w-full h-full" />
         </View>
-    );
+        <View className="flex-1">
+          <Text className="text-white text-sm font-semibold" numberOfLines={1}>Closer (Remastered)</Text>
+          <Text className="text-gray-500 text-xs mt-0.5" numberOfLines={1}>Nine Inch Nails</Text>
+        </View>
+        <View className="flex-row items-center ml-2 border border-transparent">
+          <AnimatedTouchableOpacity
+            onPress={() => setPlaying((p) => !p)}
+            className="w-8 h-8 rounded-full items-center justify-center border mr-2"
+            style={{
+              backgroundColor: playing ? "rgba(30,215,96,0.2)" : "rgba(255,255,255,0.06)",
+              borderColor: playing ? "rgba(30,215,96,0.4)" : "rgba(255,255,255,0.1)",
+              shadowColor: playing ? "#1DB954" : "transparent",
+              shadowOpacity: playing ? 0.35 : 0,
+              shadowRadius: 12,
+              elevation: playing ? 5 : 0
+            }}
+          >
+            {playing ? (
+              <View className="flex-row gap-0.5" style={{ gap: 2 }}>
+                <Animated.View className="w-1 h-3 rounded-full bg-green-400" style={p1Style} />
+                <Animated.View className="w-1 h-3 rounded-full bg-green-400" style={p2Style} />
+              </View>
+            ) : (
+                <Ionicons name="play" size={12} color="rgba(255,255,255,0.7)" style={{ marginLeft: 2 }} />
+            )}
+          </AnimatedTouchableOpacity>
+          <View className="w-6 h-6 rounded-full items-center justify-center" style={{ backgroundColor: "#1DB954" }}>
+            <Ionicons name="musical-notes" size={12} color="black" />
+          </View>
+        </View>
+      </View>
+      <View className="flex-row items-center">
+        <Text className="text-gray-600 text-[9px] mr-2">1:43</Text>
+        <View className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+          <LinearGradient
+            colors={["#1DB954", "#16a34a"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: `${progress}%`, height: "100%", borderRadius: 999 }}
+          />
+        </View>
+        <Text className="text-gray-600 text-[9px] ml-2">4:29</Text>
+      </View>
+    </View>
+  );
 }
 
-/* ── Event ticket card ──────────────────────────────────────── */
 function EventTicketCard() {
-    return (
-        <View style={styles.ticketCard}>
-            <View style={{ height: 112, overflow: 'hidden' }}>
-                <ImageWithFallback source={EVENT_IMG} alt="Boiler Room" style={{ width: '100%', height: '100%' }} />
-                {/* Horizontal Gradient Overlay */}
-                <LinearGradient
-                    colors={['rgba(11,13,23,0.55)', 'rgba(11,13,23,0.1)', 'rgba(11,13,23,0.55)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                {/* Bottom Shadow Gradient */}
-                <LinearGradient
-                    colors={['transparent', 'rgba(11,13,23,0.95)']}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                {/* LIVE badge */}
-                <View style={styles.liveBadge}>
-                    <Ionicons name="wifi" size={12} color="#60a5fa" />
-                    <Text style={{ color: '#93c5fd', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.8, marginLeft: 4 }}>LIVE</Text>
-                </View>
-            </View>
-            {/* Cutout line */}
-            <View className="flex-row items-center mx-4" style={{ height: 24, position: 'relative' }}>
-                <View style={styles.dashedLine} />
-                <View style={styles.ticketHole} />
-                <View style={styles.dashedLine} />
-            </View>
-            <View className="px-4 pb-4">
-                <View className="flex-row items-start justify-between mb-2">
-                    <View>
-                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>Boiler Room Budapest</Text>
-                        <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>Turbina Arts Center, Budapest</Text>
-                    </View>
-                    <View style={styles.goingBadge}>
-                        <Text style={{ color: '#93c5fd', fontSize: 10, fontWeight: 'bold' }}>Going ✓</Text>
-                    </View>
-                </View>
-                <View className="flex-row items-center" style={{ gap: 16 }}>
-                    <View className="flex-row items-center" style={{ gap: 6 }}>
-                        <Ionicons name="time" size={12} color="#4b5563" />
-                        <Text style={{ color: '#9ca3af', fontSize: 12 }}>Friday, Apr 18</Text>
-                    </View>
-                    <View className="flex-row items-center" style={{ gap: 6 }}>
-                        <Ionicons name="people" size={12} color="#4b5563" />
-                        <Text style={{ color: '#9ca3af', fontSize: 12 }}>340 going</Text>
-                    </View>
-                    <View className="flex-row items-center" style={{ gap: 6 }}>
-                        <Ionicons name="ticket" size={12} color="#4b5563" />
-                        <Text style={{ color: '#9ca3af', fontSize: 12 }}>Free entry</Text>
-                    </View>
-                </View>
-            </View>
+  return (
+    <View className="relative overflow-hidden rounded-3xl border" style={{ backgroundColor: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)", elevation: 5, shadowColor: "#3b82f6", shadowOpacity: 0.1, shadowRadius: 28 }}>
+      <View className="relative h-28 overflow-hidden">
+        <ImageWithFallback source={EVENT_IMG} alt="Boiler Room" className="w-full h-full" />
+        <LinearGradient
+          colors={["rgba(11,13,23,0.55)", "rgba(11,13,23,0.1)", "rgba(11,13,23,0.55)"]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <LinearGradient
+          colors={["transparent", "rgba(11,13,23,0.95)"]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View className="absolute top-2.5 right-3 flex-row items-center px-2 py-1 rounded-full border" style={{ backgroundColor: "rgba(59,130,246,0.2)", borderColor: "rgba(59,130,246,0.4)" }}>
+          <Ionicons name="wifi" size={10} color="#60a5fa" style={{ marginRight: 4 }} />
+          <Text className="text-blue-300 text-[9px] font-bold tracking-wider">LIVE</Text>
         </View>
-    );
+      </View>
+      <View className="relative flex-row items-center mx-4">
+        <View className="flex-1 border-t border-dashed" style={{ borderColor: "rgba(255,255,255,0.1)" }} />
+        <View className="w-3 h-3 rounded-full mx-2 border" style={{ backgroundColor: "#0B0D17", borderColor: "rgba(255,255,255,0.1)" }} />
+        <View className="flex-1 border-t border-dashed" style={{ borderColor: "rgba(255,255,255,0.1)" }} />
+      </View>
+      <View className="px-4 pt-2 pb-4">
+        <View className="flex-row items-start justify-between mb-2.5">
+          <View>
+            <Text className="text-white font-bold" style={{ fontSize: 15 }}>Boiler Room Budapest</Text>
+            <Text className="text-gray-500 text-xs mt-0.5">Turbina Arts Center, Budapest</Text>
+          </View>
+          <View className="px-2.5 py-1 rounded-xl border" style={{ backgroundColor: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.3)" }}>
+            <Text className="text-blue-300 text-[10px] font-bold">Going ✓</Text>
+          </View>
+        </View>
+        <View className="flex-row items-center gap-5" style={{ gap: 20 }}>
+          <View className="flex-row items-center"><Ionicons name="time-outline" size={12} color="#4b5563" style={{ marginRight: 6 }} /><Text className="text-gray-400 text-xs">Friday, Apr 18</Text></View>
+          <View className="flex-row items-center"><Ionicons name="people-outline" size={12} color="#4b5563" style={{ marginRight: 6 }} /><Text className="text-gray-400 text-xs">340 going</Text></View>
+          <View className="flex-row items-center"><Ionicons name="ticket-outline" size={12} color="#4b5563" style={{ marginRight: 6 }} /><Text className="text-gray-400 text-xs">Free entry</Text></View>
+        </View>
+      </View>
+    </View>
+  );
 }
 
-/* ── 3-dot options menu ─────────────────────────────────────── */
 function OptionsMenu({ onClose }: { onClose: () => void }) {
-    const items = ['Report Profile', 'Block User', 'Share Profile', 'Unmatch'];
-    const insets = useSafeAreaInsets();
-    
-    return (
-        <Modal transparent animationType="fade">
-            <View style={{ flex: 1 }}>
-                <Pressable onPress={onClose} style={StyleSheet.absoluteFillObject} />
-                <Animated.View
-                    entering={FadeInUp.springify().stiffness(320).damping(25)}
-                    exiting={FadeOutUp}
-                    style={[styles.menuDropdown, { top: insets.top + 60 }]}
-                >
-                    {items.map((item, i) => (
-                        <Pressable
-                            key={item}
-                            onPress={onClose}
-                            style={[
-                                styles.menuItem,
-                                i < items.length - 1 && { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-                            ]}
-                        >
-                            <Text style={{ 
-                                fontSize: 15,
-                                color: item === 'Report Profile' || item === 'Block User' ? '#f87171' : 'rgba(255,255,255,0.75)' 
-                            }}>
-                                {item}
-                            </Text>
-                        </Pressable>
-                    ))}
-                </Animated.View>
-            </View>
-        </Modal>
-    );
-}
-
-/* ── Like Action Flash Overlay ─────────────────────────────────────── */
-function ActionFlashOverlay({ type }: { type: 'pass' | 'like' | 'super' }) {
-    // Generate different simulated radial glows using LinearGradients
-    let colors = ['transparent', 'transparent'];
-    if (type === 'pass') colors = ['rgba(239,68,68,0.4)', 'rgba(239,68,68,0.0)'];
-    if (type === 'like') colors = ['rgba(34,197,94,0.4)', 'rgba(34,197,94,0.0)'];
-    if (type === 'super') colors = ['rgba(168,85,247,0.4)', 'rgba(168,85,247,0.0)'];
-
-    return (
-        <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(550)}
-            pointerEvents="none"
-            style={StyleSheet.absoluteFillObject}
+  const items = ["Report Profile", "Block User", "Share Profile", "Unmatch"];
+  return (
+    <Animated.View
+        entering={ZoomIn.duration(300)}
+        exiting={ZoomOut.duration(200)}
+        className="absolute top-14 right-4 z-50 rounded-2xl border overflow-hidden"
+        style={{
+            backgroundColor: "rgba(18,22,40,0.95)",
+            borderColor: "rgba(255,255,255,0.1)",
+            minWidth: 160,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.6,
+            shadowRadius: 32,
+            elevation: 10
+        }}
+    >
+      {items.map((item, i) => (
+        <TouchableOpacity
+            key={item}
+            onPress={onClose}
+            className="w-full px-4 py-3 flex-row items-center"
+            style={{
+                borderBottomWidth: i < items.length - 1 ? 1 : 0,
+                borderBottomColor: "rgba(255,255,255,0.06)"
+            }}
         >
-            <LinearGradient
-                colors={colors}
-                start={{ x: type === 'pass' ? 0 : type === 'like' ? 1 : 0.5, y: 0.5 }}
-                end={{ x: 0.5, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-            />
-        </Animated.View>
-    );
+          <Text style={{ color: item === "Report Profile" || item === "Block User" ? "#f87171" : "rgba(255,255,255,0.75)", fontSize: 14 }}>
+            {item}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </Animated.View>
+  );
 }
 
-
-/* ── Main component ─────────────────────────────────────────── */
 export default function ExpandedProfileScreen() {
-    const navigation = useNavigation<any>();
-    const insets = useSafeAreaInsets();
-    
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [liked, setLiked] = useState<null | 'pass' | 'like' | 'super'>(null);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const insets = useSafeAreaInsets();
+  
+  const passedUser = (route.params as any)?.user;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [liked, setLiked] = useState<null | "pass" | "like" | "super">(null);
 
-    const handleAction = (action: 'pass' | 'like' | 'super') => {
-        setLiked(action);
-        setTimeout(() => navigation.goBack(), 600);
-    };
+  const handleAction = (action: "pass" | "like" | "super") => {
+    setLiked(action);
+    setTimeout(() => navigation.goBack(), 600);
+  };
 
-    return (
-        <View style={{ flex: 1, backgroundColor: '#0B0D17' }}>
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}>
-                
-                {/* Hero Section */}
-                <View style={{ height: 520, position: 'relative' }}>
-                    <ImageWithFallback source={HERO} alt="Citra" style={{ width: '100%', height: '100%' }} />
-                    <LinearGradient
-                        colors={['rgba(11,13,23,0.55)', 'transparent', 'transparent', 'rgba(11,13,23,0.6)', 'rgba(11,13,23,0.98)']}
-                        locations={[0, 0.28, 0.5, 0.72, 1]}
-                        style={StyleSheet.absoluteFillObject}
-                        pointerEvents="none"
-                    />
+  const displayName = passedUser?.displayName || "Citra";
+  const age = passedUser?.age || 23;
+  const avatarUrl = passedUser?.avatarUrl || HERO;
 
-                    {/* Top Buttons */}
-                    <View style={[styles.heroTopBar, { top: Math.max(insets.top, 20) }]}>
-                        <AnimatedBtn onPress={() => navigation.goBack()} style={styles.iconBtn}>
-                            <Ionicons name="arrow-back" size={20} color="#fff" />
-                        </AnimatedBtn>
-                        <AnimatedBtn onPress={() => setMenuOpen(true)} style={styles.iconBtn}>
-                            <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
-                        </AnimatedBtn>
-                    </View>
+  return (
+    <View className="flex-1 bg-[#0B0D17] relative">
+      {menuOpen && (
+        <Pressable className="absolute inset-0 z-40" onPress={() => setMenuOpen(false)} />
+      )}
+      
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="relative" style={{ height: 520 }}>
+          <ImageWithFallback source={avatarUrl} alt={displayName} className="absolute inset-0 w-full h-full" />
+          <LinearGradient
+            colors={["rgba(11,13,23,0.55)", "transparent", "transparent", "rgba(11,13,23,0.6)", "rgba(11,13,23,0.98)"]}
+            locations={[0, 0.28, 0.5, 0.72, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
+          
+          <View className="absolute left-0 right-0 flex-row items-center justify-between px-4 z-10" style={{ top: Math.max(insets.top, 20) }}>
+            <AnimatedTouchableOpacity
+              onPress={() => navigation.goBack()}
+              className="w-10 h-10 rounded-2xl items-center justify-center border"
+              style={{ backgroundColor: "rgba(0,0,0,0.35)", borderColor: "rgba(255,255,255,0.15)", transform: [{scale: 1}] }}
+            >
+              <Ionicons name="arrow-back" size={20} color="white" />
+            </AnimatedTouchableOpacity>
+            <AnimatedTouchableOpacity
+              onPress={() => setMenuOpen((v) => !v)}
+              className="w-10 h-10 rounded-2xl items-center justify-center border"
+              style={{ backgroundColor: "rgba(0,0,0,0.35)", borderColor: "rgba(255,255,255,0.15)", transform: [{scale: 1}] }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color="white" />
+            </AnimatedTouchableOpacity>
+          </View>
 
-                    {/* User Info Overlay */}
-                    <View style={styles.heroInfoBlock}>
-                        <View className="flex-row items-center mb-1" style={{ gap: 10 }}>
-                            <Text style={styles.heroName}>Citra, 23</Text>
-                            <View style={styles.verifiedBadgeContainer}>
-                                <LinearGradient
-                                    colors={['#2563eb', '#60a5fa']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={StyleSheet.absoluteFillObject}
-                                />
-                                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>✓</Text>
-                            </View>
-                        </View>
-                        <View className="flex-row items-center">
-                            <Ionicons name="location" size={14} color="#9ca3af" />
-                            <Text style={{ color: '#d1d5db', fontSize: 14, marginLeft: 4 }}>2.5 km away</Text>
-                            <Text style={{ color: '#4b5563', marginHorizontal: 6 }}>·</Text>
-                            <View style={styles.onlineDotIndicator} />
-                            <Text style={{ color: '#4ade80', fontSize: 14, marginLeft: 6 }}>Online now</Text>
-                        </View>
-                    </View>
+          <View className="absolute bottom-14 left-0 right-0 px-5 z-10">
+            <View className="flex-row items-center gap-2.5 mb-1" style={{ gap: 10 }}>
+              <Text className="text-white drop-shadow-2xl" style={{ fontSize: 32, fontWeight: '800', letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 4}, textShadowRadius: 10 }}>
+                {displayName}, {age}
+              </Text>
+              <View className="w-7 h-7 rounded-full items-center justify-center" style={{ elevation: 5, shadowColor: "#3b82f6", shadowOpacity: 0.7, shadowRadius: 14 }}>
+                <LinearGradient
+                   colors={["#2563eb", "#60a5fa"]}
+                   start={{x:0, y:0}} end={{x:1, y:1}}
+                   style={{ width: '100%', height: '100%', borderRadius: 999, alignItems: 'center', justifyContent: 'center' }}
+                >
+                    <Text className="text-white text-xs font-black">✓</Text>
+                </LinearGradient>
+              </View>
+            </View>
+            <View className="flex-row items-center gap-1.5" style={{ gap: 6 }}>
+              <Ionicons name="location-outline" size={14} color="#9ca3af" />
+              <Text className="text-gray-300 text-sm">2.5 km away</Text>
+              <Text className="text-gray-600 mx-1">·</Text>
+              <View className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e", shadowColor: "#22c55e", shadowOpacity: 0.9, shadowRadius: 6, elevation: 3 }} />
+              <Text className="text-green-400 text-sm">Online now</Text>
+            </View>
+          </View>
 
-                    {/* Action Buttons (Pass, Super, Like) */}
-                    <View style={styles.actionButtonsRow}>
-                        <AnimatedBtn 
-                            onPress={() => handleAction('pass')}
-                            style={[
-                                styles.actionBtn,
-                                { width: 64, height: 64, borderRadius: 32 },
-                                { backgroundColor: liked === 'pass' ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.45)' }
-                            ]}
-                        >
-                            <Ionicons name="close" size={32} color="#f87171" />
-                        </AnimatedBtn>
-                        <AnimatedBtn 
-                            onPress={() => handleAction('super')}
-                            style={[
-                                styles.actionBtn,
-                                { width: 48, height: 48, borderRadius: 24, marginTop: 12 },
-                                { backgroundColor: liked === 'super' ? 'rgba(168,85,247,0.5)' : 'rgba(168,85,247,0.15)', borderColor: 'rgba(168,85,247,0.5)' }
-                            ]}
-                        >
-                            <Ionicons name="star" size={22} color="#d8b4fe" />
-                        </AnimatedBtn>
-                        <AnimatedBtn 
-                            onPress={() => handleAction('like')}
-                            style={[
-                                styles.actionBtn,
-                                { width: 64, height: 64, borderRadius: 32 },
-                                { backgroundColor: liked === 'like' ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.45)' }
-                            ]}
-                        >
-                            <Ionicons name="heart" size={32} color="#4ade80" />
-                        </AnimatedBtn>
-                    </View>
-                </View>
+          <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-center z-20" style={{ transform: [{ translateY: 40 }], gap: 24 }}>
+            <AnimatedTouchableOpacity onPress={() => handleAction("pass")} className="w-16 h-16 rounded-full items-center justify-center border" style={{ backgroundColor: liked === "pass" ? "rgba(239,68,68,0.4)" : "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.45)", shadowColor: "#ef4444", shadowOpacity: 0.45, shadowRadius: 24, elevation: 8, transform: [{scale: 1}] }}>
+                <Ionicons name="close" size={32} color="#f87171" style={{ fontWeight: 'bold' }} />
+            </AnimatedTouchableOpacity>
+            
+            <AnimatedTouchableOpacity onPress={() => handleAction("super")} className="w-12 h-12 rounded-full items-center justify-center border" style={{ backgroundColor: liked === "super" ? "rgba(168,85,247,0.5)" : "rgba(168,85,247,0.15)", borderColor: "rgba(168,85,247,0.5)", shadowColor: "#a855f7", shadowOpacity: 0.5, shadowRadius: 20, elevation: 8, transform: [{scale: 1}] }}>
+                <Ionicons name={liked === "super" ? "star" : "star-outline"} size={24} color="#c084fc" />
+            </AnimatedTouchableOpacity>
 
-                {/* Content Sections */}
-                <View style={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 32 }}>
-                    
-                    {/* About Me */}
-                    <View style={styles.sectionMb}>
-                        <Text style={styles.sectionTitle}>About Me</Text>
-                        <Text style={styles.bodyText}>
-                            Chasing the 4AM feeling in basements, warehouses & rooftops. Into deep kicks, sharp hi-hats, and cold drinks. If you know Boiler Room, you already know me. Always down to discover new sounds, new cities, and new people who dance with their eyes closed. 🖤
-                        </Text>
-                    </View>
-
-                    {/* My Vibe */}
-                    <View style={styles.sectionMb}>
-                        <Text style={styles.sectionTitle}>My Vibe</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                            {tags.map((tag) => {
-                                const styleDef = tagStyles[tag.glow ? tag.color : 'none'];
-                                return (
-                                    <View 
-                                        key={tag.label} 
-                                        style={[
-                                            styles.tagPill, 
-                                            { 
-                                                backgroundColor: styleDef.bg, 
-                                                borderColor: styleDef.border,
-                                                shadowColor: styleDef.shadowColor,
-                                                shadowOpacity: styleDef.shadowOpacity,
-                                                shadowRadius: styleDef.shadowRadius,
-                                                elevation: styleDef.elevation
-                                            }
-                                        ]}
-                                    >
-                                        <Text style={{ color: styleDef.text, fontSize: 12, fontWeight: '500' }}>{tag.label}</Text>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    </View>
-
-                    {/* Spotify Anthem */}
-                    <View style={styles.sectionMb}>
-                        <View className="flex-row items-center mb-3">
-                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Spotify Anthem</Text>
-                            <Text style={{ fontSize: 12, color: '#4b5563', marginLeft: 8 }}>— Citra's vibe rn</Text>
-                        </View>
-                        <SpotifyCard />
-                    </View>
-
-                    {/* Going to... */}
-                    <View style={styles.sectionMb}>
-                        <View className="flex-row items-center mb-3">
-                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Going to...</Text>
-                            <View style={styles.eventCountBadge}>
-                                <Text style={{ color: '#60a5fa', fontSize: 10, fontWeight: '600' }}>1 event</Text>
-                            </View>
-                        </View>
-                        <EventTicketCard />
-                    </View>
-
-                    {/* More Photos */}
-                    <View>
-                        <Text style={styles.sectionTitle}>More Photos</Text>
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                            {[PHOTO_1, PHOTO_2, PHOTO_3].map((src, i) => (
-                                <View key={i} style={styles.photoGridItem}>
-                                    <ImageWithFallback source={src} alt={`Photo ${i + 1}`} style={{ width: '100%', height: '100%' }} />
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                </View>
-            </ScrollView>
-
-            {menuOpen && <OptionsMenu onClose={() => setMenuOpen(false)} />}
-            {liked && <ActionFlashOverlay type={liked} />}
+            <AnimatedTouchableOpacity onPress={() => handleAction("like")} className="w-16 h-16 rounded-full items-center justify-center border" style={{ backgroundColor: liked === "like" ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.12)", borderColor: "rgba(34,197,94,0.45)", shadowColor: "#22c55e", shadowOpacity: 0.5, shadowRadius: 24, elevation: 8, transform: [{scale: 1}] }}>
+                <Ionicons name={liked === "like" ? "heart" : "heart-outline"} size={32} color="#4ade80" />
+            </AnimatedTouchableOpacity>
+          </View>
         </View>
-    );
-}
 
-/* ── Styles ─────────────────────────────────────────────────── */
-const styles = StyleSheet.create({
-    heroTopBar: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        zIndex: 10,
-    },
-    iconBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
-    },
-    heroInfoBlock: {
-        position: 'absolute',
-        bottom: 56, // above action buttons
-        left: 0,
-        right: 0,
-        paddingHorizontal: 20,
-        zIndex: 10,
-    },
-    heroName: {
-        color: '#fff',
-        fontSize: 32,
-        fontWeight: '800',
-        lineHeight: 38,
-        textShadowColor: 'rgba(0,0,0,0.6)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 8,
-    },
-    verifiedBadgeContainer: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        shadowColor: '#3b82f6',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 10,
-        elevation: 5,
-    },
-    onlineDotIndicator: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#22c55e',
-        shadowColor: '#22c55e',
-        shadowOpacity: 0.9,
-        shadowRadius: 6,
-        elevation: 3,
-    },
-    actionButtonsRow: {
-        position: 'absolute',
-        bottom: -28, // Offset out of the hero box
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 24,
-        zIndex: 20,
-    },
-    actionBtn: {
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    sectionMb: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    bodyText: {
-        color: 'rgba(255,255,255,0.5)',
-        fontSize: 13.5,
-        lineHeight: 22,
-    },
-    tagPill: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 999,
-        borderWidth: 1,
-    },
-    // Spotify Card
-    spotifyCard: {
-        borderRadius: 24,
-        padding: 16,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-    },
-    spotifyAlbum: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    spotifyPlayBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-    },
-    spotifyPlayBtnActive: {
-        backgroundColor: 'rgba(30,215,96,0.2)',
-        borderColor: 'rgba(30,215,96,0.4)',
-        shadowColor: '#1DB954',
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-    },
-    spotifyPlayBtnInactive: {
-        backgroundColor: 'rgba(255,255,255,0.06)',
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    playArrow: {
-        width: 0,
-        height: 0,
-        marginLeft: 2,
-        borderTopWidth: 5,
-        borderBottomWidth: 5,
-        borderLeftWidth: 8,
-        borderTopColor: 'transparent',
-        borderBottomColor: 'transparent',
-        borderLeftColor: 'rgba(255,255,255,0.7)',
-    },
-    equalizerBar1: {
-        width: 3,
-        height: 10,
-        borderRadius: 2,
-        backgroundColor: '#4ade80',
-    },
-    equalizerBar2: {
-        width: 3,
-        height: 8,
-        borderRadius: 2,
-        backgroundColor: '#4ade80',
-    },
-    spotifyIconBox: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#1DB954',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    timeText: {
-        color: '#4b5563',
-        fontSize: 9,
-    },
-    progressBarBg: {
-        flex: 1,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        position: 'relative',
-    },
-    // Event Ticket Card
-    eventCountBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 999,
-        backgroundColor: 'rgba(59,130,246,0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(59,130,246,0.25)',
-        marginLeft: 8,
-    },
-    ticketCard: {
-        borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-        shadowColor: '#3b82f6',
-        shadowOpacity: 0.1,
-        shadowRadius: 28,
-        elevation: 3,
-        overflow: 'hidden',
-    },
-    liveBadge: {
-        position: 'absolute',
-        top: 10,
-        right: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: 'rgba(59,130,246,0.2)',
-        borderWidth: 1,
-        borderColor: 'rgba(59,130,246,0.4)',
-    },
-    dashedLine: {
-        flex: 1,
-        height: 1,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        borderStyle: 'dashed',
-    },
-    ticketHole: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: '#0B0D17',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        marginHorizontal: 8,
-    },
-    goingBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        backgroundColor: 'rgba(59,130,246,0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(59,130,246,0.3)',
-    },
-    // More Photos
-    photoGridItem: {
-        flex: 1,
-        height: 110,
-        borderRadius: 20,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-    },
-    // Menu Dropdown
-    menuDropdown: {
-        position: 'absolute',
-        right: 16,
-        width: 160,
-        borderRadius: 16,
-        backgroundColor: 'rgba(18,22,40,0.95)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.6,
-        shadowRadius: 32,
-        elevation: 10,
-    },
-    menuItem: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-});
+        <View className="px-5 pt-14 pb-8">
+            <View className="mb-6">
+                <Text className="text-white font-bold mb-2.5" style={{ fontSize: 16, letterSpacing: -0.2 }}>About Me</Text>
+                <Text className="leading-relaxed" style={{ color: "rgba(255,255,255,0.5)", fontSize: 13.5 }}>
+                    Chasing the 4AM feeling in basements, warehouses & rooftops. Into deep kicks, sharp hi-hats, and cold drinks. If you know Boiler Room, you already know me. Always down to discover new sounds, new cities, and new people who dance with their eyes closed. 🖤
+                </Text>
+            </View>
+
+            <View className="mb-6">
+                <Text className="text-white font-bold mb-3" style={{ fontSize: 16, letterSpacing: -0.2 }}>My Vibe</Text>
+                <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                    {tags.map((tag) => {
+                        const style = tagStyles[tag.glow ? tag.color : "none"];
+                        return (
+                            <View key={tag.label} className="px-3 py-1.5 rounded-full border" style={{ backgroundColor: style.bg, borderColor: style.border, shadowColor: style.shadowColor, shadowOpacity: 0.4, shadowRadius: 8, elevation: tag.glow ? 2 : 0 }}>
+                                <Text style={{ color: style.text, fontSize: 12, fontWeight: '500' }}>{tag.label}</Text>
+                            </View>
+                        );
+                    })}
+                </View>
+            </View>
+
+            <View className="mb-6">
+                <View className="flex-row items-center mb-3" style={{ gap: 8 }}>
+                    <Text className="text-white font-bold" style={{ fontSize: 16, letterSpacing: -0.2 }}>Spotify Anthem</Text>
+                    <Text className="text-xs font-normal text-gray-600">— {displayName}'s vibe rn</Text>
+                </View>
+                <SpotifyCard />
+            </View>
+            
+            <View className="mb-6">
+                <View className="flex-row items-center mb-3" style={{ gap: 8 }}>
+                    <Text className="text-white font-bold" style={{ fontSize: 16, letterSpacing: -0.2 }}>Going to...</Text>
+                    <View className="px-2 py-0.5 rounded-full border" style={{ backgroundColor: "rgba(59,130,246,0.1)", borderColor: "rgba(59,130,246,0.25)" }}>
+                        <Text className="text-blue-400 text-[10px] font-semibold">1 event</Text>
+                    </View>
+                </View>
+                <EventTicketCard />
+            </View>
+
+            <View className="mb-4">
+                <Text className="text-white font-bold mb-3" style={{ fontSize: 16, letterSpacing: -0.2 }}>More Photos</Text>
+                <View className="flex-row justify-between mb-4 mt-2">
+                    {[PHOTO_1, PHOTO_2, PHOTO_3].map((src, i) => (
+                        <View key={i} className="overflow-hidden border" style={{ height: 110, width: "31%", borderRadius: 20, borderColor: "rgba(255,255,255,0.08)" }}>
+                            <ImageWithFallback source={src} alt={`Photo ${i + 1}`} className="w-full h-full" />
+                        </View>
+                    ))}
+                </View>
+            </View>
+        </View>
+      </ScrollView>
+
+      {menuOpen && <OptionsMenu onClose={() => setMenuOpen(false)} />}
+      
+      {liked && (
+        <Animated.View 
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(400)}
+            className="absolute inset-0 z-30 pointer-events-none" 
+        >
+            <View style={{ flex: 1, backgroundColor: liked === "like" ? "rgba(34,197,94,0.25)" : liked === "pass" ? "rgba(239,68,68,0.25)" : "rgba(168,85,247,0.35)" }} />
+        </Animated.View>
+      )}
+    </View>
+  );
+}

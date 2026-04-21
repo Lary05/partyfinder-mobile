@@ -17,6 +17,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Profile } from '../../data/dummyProfiles';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
+import { useNavigation } from '@react-navigation/native';
+import { Pressable } from 'react-native';
 
 export interface CardProps {
     profile: Profile;
@@ -31,7 +33,7 @@ export interface ProfileCardRef {
     swipeRight: () => void;
 }
 
-export const ProfileCard = forwardRef<ProfileCardRef, CardProps>(({ profile, onSwipe, isTop }, ref) => {
+const ProfileCardBase: React.ForwardRefRenderFunction<ProfileCardRef, CardProps> = ({ profile, onSwipe, isTop }, ref) => {
     const translateX = useSharedValue(0);
 
     useImperativeHandle(ref, () => ({
@@ -54,8 +56,8 @@ export const ProfileCard = forwardRef<ProfileCardRef, CardProps>(({ profile, onS
     const panResponder = useMemo(
         () =>
             PanResponder.create({
-                onStartShouldSetPanResponder: () => isTop,
-                onMoveShouldSetPanResponder: () => isTop,
+                onStartShouldSetPanResponder: () => false,
+                onMoveShouldSetPanResponder: (_, g) => isTop && (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
                 onPanResponderMove: (_, g) => {
                     if (!isTop) return;
                     translateX.value = g.dx;
@@ -108,23 +110,29 @@ export const ProfileCard = forwardRef<ProfileCardRef, CardProps>(({ profile, onS
         );
     }
 
+    const navigation = useNavigation<any>();
+
     return (
         <AnimatedView
             {...panResponder.panHandlers}
             style={[cardMotion]}
             className="absolute inset-0"
         >
-            <View
-                className="relative h-full w-full overflow-hidden rounded-3xl border border-white/15"
-                style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 16 },
-                    shadowOpacity: 0.45,
-                    shadowRadius: 24,
-                    elevation: 12,
-                }}
+            <Pressable
+                style={{ flex: 1 }}
+                onPress={() => navigation.navigate('ExpandedProfile', { user: profile })}
             >
-                <ImageWithFallback source={profile.avatarUrl} alt={profile.displayName} className="h-full w-full" />
+                <View
+                    className="relative h-full w-full overflow-hidden rounded-3xl border border-white/15"
+                    style={{
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 16 },
+                        shadowOpacity: 0.45,
+                        shadowRadius: 24,
+                        elevation: 12,
+                    }}
+                >
+                    <ImageWithFallback source={profile.avatarUrl} alt={profile.displayName} className="h-full w-full" />
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']}
                     locations={[0, 0.45, 1]}
@@ -279,7 +287,10 @@ export const ProfileCard = forwardRef<ProfileCardRef, CardProps>(({ profile, onS
                         </View>
                     </View>
                 </View>
-            </View>
+                </View>
+            </Pressable>
         </AnimatedView>
     );
-});
+};
+
+export const ProfileCard = forwardRef(ProfileCardBase);

@@ -4,6 +4,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 import LoginScreen from './src/screens/LoginScreen';
@@ -11,6 +12,7 @@ import MainTabNavigator from './src/navigation/MainTabNavigator';
 import EventDetailsScreen from './src/screens/EventDetailsScreen';
 
 import ChatDetailScreen from './src/screens/ChatDetailScreen';
+import ExpandedProfileScreen from './src/screens/ExpandedProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,11 +30,13 @@ function AppNavigation() {
     return (
         <NavigationContainer>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {userToken || isGuest ? (
+                {/* DEV_ONLY_AUTH_BYPASS: Temporarily forcing authenticated state for UI testing */}
+                {true || userToken || isGuest ? (
                     <>
                         <Stack.Screen name="Home" component={MainTabNavigator} />
                         <Stack.Screen name="EventDetails" component={EventDetailsScreen} />
                         <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+                        <Stack.Screen name="ExpandedProfile" component={ExpandedProfileScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Login" component={LoginScreen} />
@@ -44,10 +48,12 @@ function AppNavigation() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <AppNavigation />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <AppNavigation />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
