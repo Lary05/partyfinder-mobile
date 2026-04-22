@@ -13,7 +13,9 @@ import {
     Pressable,
     Dimensions,
     StyleSheet,
+    Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -30,27 +32,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-    Svg,
-    Rect,
-    Path,
-    Ellipse,
-    Defs,
-    RadialGradient,
-    Stop,
-    Pattern,
-    Line,
-    Circle,
-    Text as SvgText,
-} from 'react-native-svg';
+import { Svg } from 'react-native-svg';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 
 // ─── Theme constants ────────────────────────────────────────────────────────
-const T = '#0DD3C5';
-const T_GLOW = 'rgba(13,211,197,0.38)';
-const T_BORDER = 'rgba(13,211,197,0.45)';
-const T_BG = 'rgba(13,211,197,0.10)';
-const T_DARK = 'rgba(13,211,197,0.07)';
+const T = '#3b82f6';
+const T_GLOW = 'rgba(59,130,246,0.38)';
+const T_BORDER = 'rgba(59,130,246,0.45)';
+const T_BG = 'rgba(59,130,246,0.10)';
+const T_DARK = 'rgba(59,130,246,0.07)';
 
 // ─── Image URLs ─────────────────────────────────────────────────────────────
 const IMG_CONCERT = 'https://images.unsplash.com/photo-1763854492868-a0679273ccfe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcm93ZGVkJTIwaW5kb29yJTIwY29uY2VydCUyMHZlbnVlJTIwc3RhZ2UlMjBsaWdodHMlMjByYXZlJTIwcGFydHl8ZW58MXx8fHwxNzc2ODA3NzEwfDA&ixlib=rb-4.1.0&q=80&w=1080';
@@ -76,104 +67,39 @@ interface Party {
     time: string;
     tags: string[];
     image: string;
-    mapX: number;
-    mapY: number;
+    latitude: number;
+    longitude: number;
     highlight?: boolean;
 }
 
 const PARTIES: Party[] = [
-    { id: 1, name: 'Akvárium', fullName: 'Akvárium Klub - Nagyterem', interested: 500, distance: '1.2 km', time: '22:00', tags: ['Techno', 'Live'], image: IMG_CONCERT, mapX: 146, mapY: 196, highlight: true },
-    { id: 2, name: 'Ötkert', fullName: 'Ötkert', interested: 342, distance: '0.8 km', time: '20:00', tags: ['Bar', 'Open Air'], image: IMG_ROOFTOP, mapX: 104, mapY: 163 },
-    { id: 3, name: 'Pontoon', fullName: 'Pontoon Club', interested: 218, distance: '2.1 km', time: '23:00', tags: ['House', 'Duna'], image: IMG_COURTYARD, mapX: 308, mapY: 262 },
-    { id: 4, name: 'Gozsdurk', fullName: 'Gozsdu Udvar', interested: 156, distance: '0.5 km', time: '19:00', tags: ['Ruin Bar', 'Mix'], image: IMG_CLUB, mapX: 228, mapY: 186 },
-    { id: 5, name: 'Lyina', fullName: 'Lyina Bar', interested: 89, distance: '1.5 km', time: '21:00', tags: ['Cocktails', 'DJ'], image: IMG_BAR, mapX: 268, mapY: 218 },
-    { id: 6, name: 'Tütü', fullName: 'Tütü Bar', interested: 67, distance: '0.9 km', time: '22:30', tags: ['Indie', 'Terasz'], image: IMG_ROOFTOP, mapX: 181, mapY: 242 },
+    { id: 1, name: 'Akvárium', fullName: 'Akvárium Klub - Nagyterem', interested: 500, distance: '1.2 km', time: '22:00', tags: ['Techno', 'Live'], image: IMG_CONCERT, latitude: 47.4980, longitude: 19.0540, highlight: true },
+    { id: 2, name: 'Ötkert', fullName: 'Ötkert', interested: 342, distance: '0.8 km', time: '20:00', tags: ['Bar', 'Open Air'], image: IMG_ROOFTOP, latitude: 47.5008, longitude: 19.0494 },
+    { id: 3, name: 'Pontoon', fullName: 'Pontoon Club', interested: 218, distance: '2.1 km', time: '23:00', tags: ['House', 'Duna'], image: IMG_COURTYARD, latitude: 47.4998, longitude: 19.0475 },
+    { id: 4, name: 'Gozsdurk', fullName: 'Gozsdu Udvar', interested: 156, distance: '0.5 km', time: '19:00', tags: ['Ruin Bar', 'Mix'], image: IMG_CLUB, latitude: 47.4982, longitude: 19.0594 },
+    { id: 5, name: 'Lyina', fullName: 'Lyina Bar', interested: 89, distance: '1.5 km', time: '21:00', tags: ['Cocktails', 'DJ'], image: IMG_BAR, latitude: 47.5015, longitude: 19.0620 },
+    { id: 6, name: 'Tütü', fullName: 'Tütü Bar', interested: 67, distance: '0.9 km', time: '22:30', tags: ['Indie', 'Terasz'], image: IMG_ROOFTOP, latitude: 47.5029, longitude: 19.0583 },
 ];
 
-// ─── Budapest Map SVG (react-native-svg, no filters) ─────────────────────────
-function BudapestMapSVG() {
-    const hStripes = [96, 140, 176, 210, 241, 267, 328, 362, 402, 440];
-    const vStripes = [97, 138, 177, 220, 261, 301, 340, 375];
-
-    return (
-        <Svg viewBox="0 0 390 480" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-            <Defs>
-                <RadialGradient id="userGlow" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={T} stopOpacity={0.45} />
-                    <Stop offset="100%" stopColor={T} stopOpacity={0} />
-                </RadialGradient>
-                <RadialGradient id="akvGlow" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={T} stopOpacity={0.12} />
-                    <Stop offset="100%" stopColor={T} stopOpacity={0} />
-                </RadialGradient>
-                <Pattern id="blockPattern" x="0" y="0" width="42" height="42" patternUnits="userSpaceOnUse">
-                    <Rect width="42" height="42" fill="#070B1E" />
-                    <Rect width="40" height="40" fill="#080D20" />
-                </Pattern>
-            </Defs>
-
-            {/* Base fill */}
-            <Rect width="390" height="480" fill="#06091A" />
-            <Rect width="390" height="480" fill="url(#blockPattern)" opacity={0.6} />
-
-            {/* Edge columns */}
-            <Rect x="358" y="0" width="32" height="480" fill="#060D22" />
-            <Rect x="370" y="0" width="20" height="480" fill="#060A1E" />
-            <Rect x="58" y="0" width="10" height="480" fill="#152844" />
-
-            {/* River / tram line */}
-            <Rect x="0" y="298" width="390" height="11" fill="#152844" />
-            <Line x1="58" y1="204" x2="390" y2="16" stroke="#122038" strokeWidth="9" />
-            <Path d="M132 0 Q128 55 126 110 Q122 165 121 204 Q120 250 127 298 Q132 335 135 370 L135 480" stroke="#122038" strokeWidth="7" fill="none" />
-
-            {/* Horizontal street grid */}
-            {hStripes.map((y) => (
-                <Rect key={`h${y}`} x="0" y={y} width="390" height={y < 270 ? 5 : 4} fill="#0D1C35" />
-            ))}
-            {/* Vertical street grid */}
-            {vStripes.map((x) => (
-                <Rect key={`v${x}`} x={x} y="0" width={x < 260 ? 5 : 4} height="480" fill="#0D1C35" />
-            ))}
-
-            {/* Park / green zone */}
-            <Ellipse cx="83" cy="201" rx="34" ry="27" fill="#091710" />
-            <Ellipse cx="83" cy="201" rx="27" ry="21" fill="#0A1C12" />
-            <Ellipse cx="83" cy="201" rx="18" ry="14" fill="#0B2015" />
-
-            {/* Landmarks blocks */}
-            <Rect x="160" y="250" width="28" height="20" rx="4" fill="#091710" />
-            <Rect x="287" y="163" width="24" height="18" rx="4" fill="#091710" />
-            <Rect x="232" y="365" width="30" height="22" rx="4" fill="#091710" />
-
-            {/* Akvárium glow halo */}
-            <Ellipse cx="146" cy="196" rx="55" ry="42" fill="url(#akvGlow)" />
-
-            {/* Dashed overlays */}
-            <Line x1="58" y1="204" x2="390" y2="16" stroke="#1A2A08" strokeWidth="2.5" strokeDasharray="5,7" opacity={0.55} />
-            <Line x1="0" y1="303" x2="390" y2="303" stroke="#221808" strokeWidth="2.5" strokeDasharray="5,7" opacity={0.55} />
-            <Line x1="63" y1="0" x2="63" y2="480" stroke="#08152A" strokeWidth="2.5" strokeDasharray="5,7" opacity={0.55} />
-
-            {/* Metro dot */}
-            <Circle cx="63" cy="204" r="6" fill="#0C1C36" stroke="#1E3A62" strokeWidth="1.5" />
-            <Circle cx="63" cy="204" r="3" fill="#1E3A62" />
-
-            {/* Street labels */}
-            <SvgText x="30" y="170" fill="#132030" fontSize="7.5" fontFamily="sans-serif" letterSpacing="0.3">Deák</SvgText>
-            <SvgText x="30" y="180" fill="#132030" fontSize="7.5" fontFamily="sans-serif" letterSpacing="0.3">Ferenc tér</SvgText>
-            <SvgText x="195" y="253" fill="#0F1C2E" fontSize="7" fontFamily="sans-serif">Gozsdu Udvar</SvgText>
-            <SvgText x="90" y="55" fill="#0D1A2C" fontSize="8.5" fontFamily="sans-serif" fontWeight="bold" letterSpacing="1.2">V. KER.</SvgText>
-            <SvgText x="200" y="55" fill="#0D1A2C" fontSize="8.5" fontFamily="sans-serif" fontWeight="bold" letterSpacing="1.2">VII. KER.</SvgText>
-            <SvgText x="72" y="440" fill="#0D1A2C" fontSize="8.5" fontFamily="sans-serif" fontWeight="bold" letterSpacing="1.2">VIII. KER.</SvgText>
-            <SvgText fill="#0D1A2E" fontSize="7" fontFamily="sans-serif" letterSpacing="1" rotation="-18" originX="220" originY="115" x="120" y="115">ANDRÁSSY ÚT</SvgText>
-            <SvgText fill="#0D1A2E" fontSize="7" fontFamily="sans-serif" letterSpacing="0.8" x="155" y="295">RÁKÓCZI ÚT</SvgText>
-
-            {/* User location dot */}
-            <Circle cx="130" cy="215" r="20" fill="url(#userGlow)" />
-            <Circle cx="130" cy="215" r="7" fill={T} opacity={0.85} />
-            <Circle cx="130" cy="215" r="3.5" fill="white" />
-        </Svg>
-    );
-}
+// Dark mode premium map style
+const MAP_STYLE = [
+  { "elementType": "geometry", "stylers": [{ "color": "#0B0D17" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#1a3646" }] },
+  { "featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{ "color": "#4b6878" }] },
+  { "featureType": "administrative.land_parcel", "elementType": "labels.text.fill", "stylers": [{ "color": "#64779e" }] },
+  { "featureType": "landscape.man_made", "elementType": "geometry.stroke", "stylers": [{ "color": "#334e87" }] },
+  { "featureType": "landscape.natural", "elementType": "geometry", "stylers": [{ "color": "#023e58" }] },
+  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#283d6a" }] },
+  { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#6f9ba5" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#172346" }] },
+  { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca5b3" }] },
+  { "featureType": "road", "elementType": "labels.text.stroke", "stylers": [{ "color": "#1d2c4d" }] },
+  { "featureType": "transit.line", "elementType": "geometry.fill", "stylers": [{ "color": "#283d6a" }] },
+  { "featureType": "transit.station", "elementType": "geometry", "stylers": [{ "color": "#3a4762" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#050C20" }] },
+  { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
+];
 
 // ─── Venue Pin ───────────────────────────────────────────────────────────────
 interface VenuePinProps { party: Party; selected: boolean; onPress: () => void; }
@@ -183,15 +109,11 @@ function VenuePin({ party, selected, onPress }: VenuePinProps) {
     const isActive = selected || isHighlight;
 
     return (
-        <Pressable
-            onPress={onPress}
+        <View
             style={[
                 styles.venuePin,
                 {
-                    left: party.mapX,
-                    top: party.mapY,
-                    zIndex: isHighlight ? 10 : selected ? 8 : 5,
-                    backgroundColor: isActive ? 'rgba(13,211,197,0.18)' : 'rgba(8,14,32,0.9)',
+                    backgroundColor: isActive ? 'rgba(59,130,246,0.18)' : 'rgba(8,14,32,0.9)',
                     borderColor: isActive ? T_BORDER : 'rgba(255,255,255,0.18)',
                     // Native shadow replaces CSS box-shadow / feGaussianBlur
                     shadowColor: isHighlight ? T : selected ? T : '#000',
@@ -208,161 +130,97 @@ function VenuePin({ party, selected, onPress }: VenuePinProps) {
             <Text style={[styles.pinLabel, { color: isActive ? T : 'rgba(255,255,255,0.85)' }]}>
                 {party.name}
             </Text>
-        </Pressable>
-    );
-}
-
-// ─── Featured Card ───────────────────────────────────────────────────────────
-function FeaturedCard({ party }: { party: Party }) {
-    const [dot, setDot] = useState(0);
-    const isHighlight = !!party.highlight;
-
-    return (
-        <View style={[
-            styles.featuredCard,
-            {
-                borderColor: isHighlight ? T_BORDER : 'rgba(255,255,255,0.09)',
-                shadowColor: isHighlight ? T : '#000',
-                shadowOpacity: isHighlight ? 0.35 : 0.5,
-                shadowRadius: isHighlight ? 20 : 12,
-                elevation: isHighlight ? 10 : 5,
-            },
-        ]}>
-            {/* Hero image */}
-            <View style={styles.featuredImageContainer}>
-                <ImageWithFallback source={party.image} alt={party.name} style={StyleSheet.absoluteFillObject} />
-                <LinearGradient
-                    colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(8,12,28,0.8)']}
-                    locations={[0, 0.4, 1]}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                {/* TONIGHT badge */}
-                <View style={styles.tonightBadge}>
-                    <View style={styles.tonightDot} />
-                    <Text style={styles.tonightText}>TONIGHT</Text>
-                </View>
-                {/* Distance badge */}
-                <View style={styles.distanceBadge}>
-                    <Ionicons name="navigate" size={10} color="#d1d5db" style={{ marginRight: 3 }} />
-                    <Text style={styles.distanceText}>{party.distance}</Text>
-                </View>
-            </View>
-
-            {/* Dot pager */}
-            <View style={styles.dotRow}>
-                {[0, 1, 2].map((i) => (
-                    <Pressable key={i} onPress={() => setDot(i)}>
-                        <View style={[
-                            styles.pageDot,
-                            {
-                                width: i === dot ? 16 : 5,
-                                backgroundColor: i === dot ? T : 'rgba(255,255,255,0.2)',
-                                shadowColor: i === dot ? T : undefined,
-                                shadowOpacity: i === dot ? 0.7 : 0,
-                                shadowRadius: i === dot ? 5 : 0,
-                            },
-                        ]} />
-                    </Pressable>
-                ))}
-            </View>
-
-            {/* Info */}
-            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                <View style={styles.featuredInfoRow}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.featuredName}>{party.fullName}</Text>
-                        <View style={styles.metaRow}>
-                            <View style={styles.metaChip}>
-                                <Ionicons name="people" size={11} color="#6b7280" style={{ marginRight: 3 }} />
-                                <Text style={styles.metaText}>({party.interested} érdeklődő)</Text>
-                            </View>
-                            <View style={styles.metaChip}>
-                                <Ionicons name="time-outline" size={11} color="#6b7280" style={{ marginRight: 3 }} />
-                                <Text style={styles.metaText}>{party.time}</Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                        {party.tags.map((tag) => (
-                            <View key={tag} style={styles.tagPill}>
-                                <Text style={styles.tagText}>{tag}</Text>
-                            </View>
-                        ))}
-                    </View>
-                </View>
-
-                {/* CTA button */}
-                <View style={[styles.ctaBtn, { borderColor: T_BORDER, backgroundColor: 'rgba(13,211,197,0.12)', shadowColor: T, shadowOpacity: 0.35, shadowRadius: 16, elevation: 6 }]}>
-                    <LinearGradient
-                        colors={['rgba(13,211,197,0.22)', 'rgba(13,211,197,0.10)']}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        style={StyleSheet.absoluteFillObject}
-                    />
-                    <Ionicons name="flame" size={15} color={T} style={{ marginRight: 7 }} />
-                    <Text style={{ color: T, fontWeight: '700', fontSize: 14, letterSpacing: 0.5 }}>Kiválasztás</Text>
-                </View>
-            </View>
         </View>
     );
 }
 
-// ─── Compact Card ────────────────────────────────────────────────────────────
-function CompactCard({ party, onPress }: { party: Party; onPress: () => void }) {
+// ─── Premium Event Card (Matches HomeFeedScreen) ─────────────────────────
+function PremiumEventCard({ party, onPress }: { party: Party; onPress: () => void }) {
     const isHighlight = !!party.highlight;
 
     return (
         <Pressable
             onPress={onPress}
             style={[
-                styles.compactCard,
+                styles.premiumCard,
                 {
-                    borderColor: isHighlight ? T_BORDER : 'rgba(255,255,255,0.07)',
-                    shadowColor: isHighlight ? T : 'transparent',
-                    shadowOpacity: isHighlight ? 0.3 : 0,
-                    shadowRadius: 12,
-                    elevation: isHighlight ? 5 : 0,
+                    borderColor: isHighlight ? T_BORDER : 'rgba(255,255,255,0.09)',
+                    shadowColor: isHighlight ? T : '#000',
+                    shadowOpacity: isHighlight ? 0.45 : 0.45,
+                    shadowRadius: isHighlight ? 20 : 16,
+                    elevation: isHighlight ? 10 : 6,
                 },
             ]}
         >
-            {/* Thumbnail */}
-            <View style={styles.compactThumb}>
-                <ImageWithFallback source={party.image} alt={party.name} style={{ width: '100%', height: '100%' }} />
+            <View style={styles.premiumImageContainer}>
+                <ImageWithFallback source={party.image} alt={party.name} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient
+                    colors={['rgba(0,0,0,0.15)', 'rgba(11,13,23,0.7)']}
+                    style={StyleSheet.absoluteFillObject}
+                />
+
+                <View style={[styles.premiumGenreBadge, { backgroundColor: 'rgba(59,130,246,0.15)', borderColor: 'rgba(59,130,246,0.4)' }]}>
+                    <Text style={[styles.premiumGenreText, { color: '#60a5fa' }]}>
+                        {party.tags[0] || 'Mix'}
+                    </Text>
+                </View>
+
+                {isHighlight ? (
+                    <View style={styles.tonightBadge}>
+                        <View style={styles.tonightDot} />
+                        <Text style={styles.tonightText}>TONIGHT</Text>
+                    </View>
+                ) : (
+                    <View style={styles.friendsBadge}>
+                        <Ionicons name="people-outline" size={10} color="#d1d5db" />
+                        <Text style={styles.friendsText}>+{Math.floor(Math.random() * 5) + 1} friends</Text>
+                    </View>
+                )}
             </View>
 
-            {/* Info */}
-            <View style={styles.compactInfo}>
-                <View>
-                    <Text style={styles.compactName} numberOfLines={1}>{party.fullName}</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                        {party.tags.map((t) => (
-                            <View key={t} style={styles.tagPillSm}>
-                                <Text style={styles.tagTextSm}>{t}</Text>
-                            </View>
-                        ))}
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={styles.premiumTitle}>{party.name}</Text>
+                        <Text style={styles.premiumSubtitle}>{party.fullName}</Text>
+                    </View>
+                    <View style={styles.goingPill}>
+                        <Ionicons name="star" size={12} color="#facc15" />
+                        <Text style={styles.goingText}>{party.interested}</Text>
                     </View>
                 </View>
-                <View style={styles.compactMeta}>
-                    <View style={styles.metaChip}>
-                        <Ionicons name="people" size={10} color="#4b5563" style={{ marginRight: 3 }} />
-                        <Text style={styles.metaSmText}>{party.interested}</Text>
+
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="time-outline" size={12} color="#6b7280" />
+                        <Text style={{ color: '#9ca3af', fontSize: 12 }}>{party.time}</Text>
                     </View>
-                    <View style={styles.metaChip}>
-                        <Ionicons name="location" size={10} color="#4b5563" style={{ marginRight: 3 }} />
-                        <Text style={styles.metaSmText}>{party.distance}</Text>
-                    </View>
-                    <View style={styles.metaChip}>
-                        <Ionicons name="time-outline" size={10} color="#4b5563" style={{ marginRight: 3 }} />
-                        <Text style={styles.metaSmText}>{party.time}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 120, gap: 6 }}>
+                        <Ionicons name="location-outline" size={12} color="#6b7280" />
+                        <Text style={{ color: '#9ca3af', fontSize: 12 }} numberOfLines={1}>{party.distance}</Text>
                     </View>
                 </View>
             </View>
-
-            {/* Save button */}
-            <Pressable style={styles.saveBtn}>
-                <Ionicons name="star-outline" size={16} color={T} />
-            </Pressable>
         </Pressable>
     );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function partyToApiEvent(p: Party): any {
+    return {
+        id: p.id,
+        title: p.name,
+        description: p.fullName,
+        start_time: '2026-04-15T22:00:00.000Z',
+        image_url: p.image,
+        interested_count: p.interested,
+        going_count: p.interested,
+        genre: p.tags[0] || 'Mix',
+        location: {
+            name: p.name,
+            city: { name: 'Budapest' }
+        }
+    };
 }
 
 // ─── Draggable Bottom Sheet ───────────────────────────────────────────────────
@@ -371,12 +229,14 @@ interface DraggablePanelProps {
     selectedParty: Party;
     onSelectParty: (p: Party) => void;
     bottomInset: number;
+    filteredParties: Party[];
 }
 
-function DraggablePanel({ searchActive, selectedParty, onSelectParty, bottomInset }: DraggablePanelProps) {
+function DraggablePanel({ searchActive, selectedParty, onSelectParty, bottomInset, filteredParties }: DraggablePanelProps) {
     const translateY = useSharedValue(PANEL_PEEK_Y);
     const lastY = useSharedValue(PANEL_PEEK_Y);
     const [expanded, setExpanded] = useState(false);
+    const navigation = useNavigation<any>();
 
     const snapTo = (target: number) => {
         'worklet';
@@ -444,7 +304,7 @@ function DraggablePanel({ searchActive, selectedParty, onSelectParty, bottomInse
                             <Text style={styles.panelTitle}>
                                 {searchActive ? 'Keresési eredmények' : 'Közelben ma este'}
                             </Text>
-                            <Text style={styles.panelSubtitle}>{PARTIES.length} buli • Budapest</Text>
+                            <Text style={styles.panelSubtitle}>{filteredParties.length} buli • Budapest</Text>
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <View style={styles.liveBadge}>
@@ -466,19 +326,32 @@ function DraggablePanel({ searchActive, selectedParty, onSelectParty, bottomInse
             {/* Scrollable content */}
             <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 + bottomInset }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset + 80 }}
                 showsVerticalScrollIndicator={false}
                 scrollEventThrottle={16}
             >
-                <FeaturedCard party={PARTIES[0]} />
-                <Text style={styles.sectionLabel}>Egyéb bulik közelben</Text>
-                {PARTIES.slice(1).map((p) => (
-                    <CompactCard
-                        key={p.id}
-                        party={p}
-                        onPress={() => onSelectParty(p)}
-                    />
-                ))}
+                {filteredParties.length > 0 && (
+                    <Text style={styles.sectionLabel}>
+                        {searchActive ? 'Keresési Találatok' : 'Kiemelt Bulik'}
+                    </Text>
+                )}
+
+                {filteredParties.length === 0 ? (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                        <Text style={{ color: '#9ca3af' }}>Nincs találat a keresésére.</Text>
+                    </View>
+                ) : (
+                    filteredParties.map((p) => (
+                        <PremiumEventCard
+                            key={p.id}
+                            party={p}
+                            onPress={() => {
+                                onSelectParty(p);
+                                navigation.navigate('EventDetails', { event: partyToApiEvent(p) });
+                            }}
+                        />
+                    ))
+                )}
                 <View style={{ height: 8 }} />
             </ScrollView>
         </Animated.View>
@@ -493,25 +366,46 @@ export default function SearchScreen() {
     const [searchText, setSearchText] = useState('');
     const [searchActive, setSearchActive] = useState(false);
     const [selectedParty, setSelectedParty] = useState<Party>(PARTIES[0]);
+    const [sortDesc, setSortDesc] = useState(true);
+    const [filterActive, setFilterActive] = useState(false);
 
-    // Animated values for search bar border glow & map fade
+    const filteredParties = React.useMemo(() => {
+        let results = PARTIES;
+        const q = searchText.toLowerCase().trim();
+        if (q) {
+            results = results.filter(p => 
+                p.name.toLowerCase().includes(q) || 
+                p.fullName.toLowerCase().includes(q) || 
+                p.tags.some(t => t.toLowerCase().includes(q))
+            );
+        }
+
+        if (filterActive) {
+            // Apply "Techno" filter
+            results = results.filter(p => p.tags.some(t => t.toLowerCase() === 'techno'));
+        }
+        
+        return results.slice().sort((a, b) => {
+            if (sortDesc) {
+                return b.interested - a.interested;
+            } else {
+                return a.interested - b.interested;
+            }
+        });
+    }, [searchText, sortDesc, filterActive]);
+
+    // Animated values for search bar border glow
     const searchGlow = useSharedValue(0);
-    const mapOpacity = useSharedValue(1);
-    const mapScale = useSharedValue(1);
 
     const handleFocus = () => {
         setSearchActive(true);
         searchGlow.value = withTiming(1, { duration: 250 });
-        mapOpacity.value = withTiming(0, { duration: 300 });
-        mapScale.value = withTiming(1.04, { duration: 300 });
     };
 
     const handleBlur = () => {
         if (!searchText) {
             setSearchActive(false);
             searchGlow.value = withTiming(0, { duration: 250 });
-            mapOpacity.value = withTiming(1, { duration: 300 });
-            mapScale.value = withTiming(1, { duration: 300 });
         }
     };
 
@@ -519,8 +413,6 @@ export default function SearchScreen() {
         setSearchText('');
         setSearchActive(false);
         searchGlow.value = withTiming(0, { duration: 250 });
-        mapOpacity.value = withTiming(1, { duration: 300 });
-        mapScale.value = withTiming(1, { duration: 300 });
     };
 
     const searchBarStyle = useAnimatedStyle(() => ({
@@ -531,16 +423,11 @@ export default function SearchScreen() {
         elevation: searchGlow.value * 8,
     }));
 
-    const mapContainerStyle = useAnimatedStyle(() => ({
-        opacity: mapOpacity.value,
-        transform: [{ scale: mapScale.value }],
-    }));
-
     return (
-        <View style={{ flex: 1, backgroundColor: '#06091A' }}>
+        <View style={{ flex: 1, backgroundColor: '#0B0D17' }}>
                 {/* Background gradient */}
                 <LinearGradient
-                    colors={['#050C20', '#070C1C', '#060915']}
+                    colors={['#0B0D17', '#080A12']}
                     locations={[0, 0.4, 1]}
                     style={StyleSheet.absoluteFillObject}
                 />
@@ -578,21 +465,31 @@ export default function SearchScreen() {
 
                     {/* Filter row */}
                     <View style={styles.filterRow}>
-                        <Pressable style={styles.filterChip}>
+                        <Pressable 
+                            style={[styles.filterChip, filterActive && { borderColor: 'rgba(139,92,246,0.6)' }]}
+                            onPress={() => setFilterActive(!filterActive)}
+                        >
                             <View style={[styles.filterDot, { backgroundColor: T, shadowColor: T, shadowOpacity: 0.8, shadowRadius: 5 }]} />
                             <Ionicons name="options-outline" size={13} color="#9ca3af" style={{ marginRight: 5 }} />
-                            <Text style={styles.filterText}>Szűrők</Text>
+                            <Text style={[styles.filterText, filterActive && { color: '#e5e7eb' }]}>
+                                {filterActive ? 'Techno Csak' : 'Szűrők'}
+                            </Text>
                         </Pressable>
 
-                        <Pressable style={styles.filterChip}>
+                        <Pressable 
+                           style={[styles.filterChip, !sortDesc && { borderColor: 'rgba(139,92,246,0.6)' }]} 
+                           onPress={() => setSortDesc(!sortDesc)}
+                        >
                             <View style={[styles.filterDot, { backgroundColor: '#8b5cf6', shadowColor: '#8b5cf6', shadowOpacity: 0.8, shadowRadius: 5 }]} />
                             <Ionicons name="swap-vertical" size={13} color="#9ca3af" style={{ marginRight: 5 }} />
-                            <Text style={styles.filterText}>Rendezés</Text>
+                            <Text style={[styles.filterText, !sortDesc && { color: '#e5e7eb' }]}>
+                                {sortDesc ? 'Népszerűek' : 'Kevésbé f.'}
+                            </Text>
                         </Pressable>
 
                         <View style={styles.countChip}>
                             <Ionicons name="flame" size={13} color={T} style={{ marginRight: 5 }} />
-                            <Text style={[styles.filterText, { color: T, fontWeight: '700' }]}>{PARTIES.length}</Text>
+                            <Text style={[styles.filterText, { color: T, fontWeight: '700' }]}>{filteredParties.length}</Text>
                         </View>
                     </View>
                 </View>
@@ -601,22 +498,38 @@ export default function SearchScreen() {
                 <View style={{ flex: 1, position: 'relative' }}>
                     {/* Map */}
                     <Animated.View
-                        style={[StyleSheet.absoluteFillObject, mapContainerStyle]}
+                        style={[StyleSheet.absoluteFillObject]}
                         pointerEvents={searchActive ? 'none' : 'box-none'}
                     >
-                        <BudapestMapSVG />
-
-                        {/* Venue Pins overlay */}
-                        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-                            {PARTIES.map((p) => (
-                                <VenuePin
-                                    key={p.id}
-                                    party={p}
-                                    selected={selectedParty.id === p.id}
+                        <MapView
+                            provider={PROVIDER_GOOGLE}
+                            style={StyleSheet.absoluteFillObject}
+                            customMapStyle={MAP_STYLE}
+                            initialRegion={{
+                                latitude: 47.4980,
+                                longitude: 19.0540,
+                                latitudeDelta: 0.02,
+                                longitudeDelta: 0.02,
+                            }}
+                            showsUserLocation={true}
+                            showsPointsOfInterest={false}
+                        >
+                            {filteredParties.map((p) => (
+                                <Marker
+                                    key={`marker-${p.id}`}
+                                    coordinate={{ latitude: p.latitude, longitude: p.longitude }}
                                     onPress={() => setSelectedParty(p)}
-                                />
+                                    // Make sure pins appear above others when highlighted or selected
+                                    zIndex={p.highlight ? 10 : (selectedParty?.id === p.id ? 8 : 5)}
+                                >
+                                    <VenuePin
+                                        party={p}
+                                        selected={selectedParty?.id === p.id}
+                                        onPress={() => {}}
+                                    />
+                                </Marker>
                             ))}
-                        </View>
+                        </MapView>
 
                         {/* Locate button */}
                         <Pressable style={styles.locateBtn}>
@@ -630,6 +543,7 @@ export default function SearchScreen() {
                         selectedParty={selectedParty}
                         onSelectParty={setSelectedParty}
                         bottomInset={bottomInset}
+                        filteredParties={filteredParties}
                     />
                 </View>
             </View>
@@ -715,14 +629,12 @@ const styles = StyleSheet.create({
     },
     // Map / Pins
     venuePin: {
-        position: 'absolute',
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 999,
         borderWidth: 1,
-        transform: [{ translateX: -30 }, { translateY: -14 }],
     },
     pinDot: {
         width: 6,
@@ -843,23 +755,38 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         paddingHorizontal: 4,
     },
-    // Featured Card
-    featuredCard: {
-        backgroundColor: 'rgba(8,12,28,0.95)',
+    // Premium Card
+    premiumCard: {
+        backgroundColor: 'rgba(255,255,255,0.04)',
         borderRadius: 24,
         borderWidth: 1,
         overflow: 'hidden',
         marginBottom: 12,
     },
-    featuredImageContainer: {
-        height: 160,
+    premiumImageContainer: {
+        height: 110,
         position: 'relative',
         overflow: 'hidden',
+    },
+    premiumGenreBadge: {
+        position: 'absolute',
+        top: 10,
+        left: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+        borderWidth: 1,
+    },
+    premiumGenreText: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
     tonightBadge: {
         position: 'absolute',
         top: 10,
-        left: 12,
+        right: 12,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 8,
@@ -882,7 +809,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         letterSpacing: 0.8,
     },
-    distanceBadge: {
+    friendsBadge: {
         position: 'absolute',
         top: 10,
         right: 12,
@@ -893,132 +820,38 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: 'rgba(0,0,0,0.45)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
+        borderColor: 'rgba(255,255,255,0.1)',
     },
-    distanceText: {
+    friendsText: {
         color: '#e5e7eb',
         fontSize: 9,
+        fontWeight: '600',
+        marginLeft: 4,
     },
-    dotRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 8,
-    },
-    pageDot: {
-        height: 5,
-        borderRadius: 999,
-    },
-    featuredInfoRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-    },
-    featuredName: {
+    premiumTitle: {
         color: '#fff',
         fontSize: 15,
         fontWeight: '700',
     },
-    metaRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 4,
-        flexWrap: 'wrap',
-    },
-    metaChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    metaText: {
-        color: '#9ca3af',
-        fontSize: 11,
-    },
-    metaSmText: {
+    premiumSubtitle: {
         color: '#6b7280',
-        fontSize: 10,
+        fontSize: 12,
+        marginTop: 2,
     },
-    tagPill: {
+    goingPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 999,
-        backgroundColor: T_BG,
-        borderWidth: 1,
-        borderColor: T_BORDER,
-    },
-    tagText: {
-        color: T,
-        fontSize: 9,
-        fontWeight: '600',
-    },
-    tagPillSm: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 999,
-        backgroundColor: T_BG,
-        borderWidth: 1,
-        borderColor: T_BORDER,
-    },
-    tagTextSm: {
-        color: T,
-        fontSize: 9,
-        fontWeight: '500',
-    },
-    ctaBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 16,
-        borderWidth: 1,
-        paddingVertical: 12,
-        overflow: 'hidden',
-    },
-    // Compact Card
-    compactCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 20,
-        borderWidth: 1,
-        backgroundColor: 'rgba(8,12,28,0.92)',
-        marginBottom: 10,
-    },
-    compactThumb: {
-        width: 80,
-        height: 80,
+        paddingVertical: 4,
         borderRadius: 12,
-        overflow: 'hidden',
-        marginRight: 12,
-        flexShrink: 0,
-    },
-    compactInfo: {
-        flex: 1,
-        justifyContent: 'space-between',
-        paddingVertical: 2,
-    },
-    compactName: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    compactMeta: {
-        flexDirection: 'row',
-        gap: 10,
-        marginTop: 6,
-    },
-    saveBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: T_DARK,
+        backgroundColor: 'rgba(255,255,255,0.05)',
         borderWidth: 1,
-        borderColor: T_BORDER,
-        marginLeft: 10,
-        shadowColor: T,
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        borderColor: 'rgba(255,255,255,0.08)',
+    },
+    goingText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+        marginLeft: 4,
     },
 });
