@@ -14,6 +14,7 @@ import {
     Dimensions,
     StyleSheet,
     Alert,
+    Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Animated, {
@@ -403,10 +404,8 @@ export default function SearchScreen() {
     };
 
     const handleBlur = () => {
-        if (!searchText) {
-            setSearchActive(false);
-            searchGlow.value = withTiming(0, { duration: 250 });
-        }
+        setSearchActive(false);
+        searchGlow.value = withTiming(0, { duration: 250 });
     };
 
     const clearSearch = () => {
@@ -427,7 +426,7 @@ export default function SearchScreen() {
         <View style={{ flex: 1, backgroundColor: '#0B0D17' }}>
                 {/* Background gradient */}
                 <LinearGradient
-                    colors={['#0B0D17', '#080A12']}
+                    colors={['#0B0D17', '#080A12', '#050810']}
                     locations={[0, 0.4, 1]}
                     style={StyleSheet.absoluteFillObject}
                 />
@@ -454,7 +453,7 @@ export default function SearchScreen() {
                             />
                             <Text style={styles.searchSub}>Ma este • 2 fő</Text>
                         </View>
-                        {searchActive ? (
+                        {searchActive || searchText.length > 0 ? (
                             <Pressable onPress={clearSearch} style={styles.clearBtn}>
                                 <Ionicons name="close" size={13} color="#9ca3af" />
                             </Pressable>
@@ -499,7 +498,7 @@ export default function SearchScreen() {
                     {/* Map */}
                     <Animated.View
                         style={[StyleSheet.absoluteFillObject]}
-                        pointerEvents={searchActive ? 'none' : 'box-none'}
+                        pointerEvents="box-none"
                     >
                         <MapView
                             provider={PROVIDER_GOOGLE}
@@ -513,6 +512,11 @@ export default function SearchScreen() {
                             }}
                             showsUserLocation={true}
                             showsPointsOfInterest={false}
+                            zoomEnabled={true}
+                            scrollEnabled={true}
+                            pitchEnabled={true}
+                            onPress={() => Keyboard.dismiss()}
+                            onPanDrag={() => Keyboard.dismiss()}
                         >
                             {filteredParties.map((p) => (
                                 <Marker

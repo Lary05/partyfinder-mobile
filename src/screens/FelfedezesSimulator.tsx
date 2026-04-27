@@ -5,13 +5,17 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState, useRef } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View, Image } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withTiming,
+    FadeIn,
+    ZoomIn,
+    FadeInDown,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { ProfileCard, ProfileCardRef } from '../components/match/ProfileCard';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Profile, profilesSeed } from '../data/dummyProfiles';
@@ -23,14 +27,18 @@ type FelfedezesSimulatorProps = {
     bottomInset?: number;
 };
 
+const RAMA_AVATAR = "https://images.unsplash.com/photo-1769142899668-5816cf1d920a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMG1hbiUyMGF2YXRhciUyMHByb2ZpbGUlMjBwaG90b3xlbnwxfHx8fDE3NzYyOTI0NzR8MA&ixlib=rb-4.1.0&q=80&w=1080";
+
 export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimulatorProps) {
     const { isGuest } = useAuth();
+    const navigation = useNavigation<any>();
 
     // Per project rules (Section 5 – Match Screen Flow), the swipe view is the DEFAULT.
     // The pre-filtering search form ("Kivel bulizol ma?") is bypassed on mount.
     const [cards, setCards] = useState<Profile[]>(profilesSeed);
     const [removed, setRemoved] = useState<Profile[]>([]);
     const [swipeAction, setSwipeAction] = useState<'like' | 'pass' | null>(null);
+    const [matchCelebration, setMatchCelebration] = useState<Profile | null>(null);
     const topCardRef = useRef<ProfileCardRef>(null);
 
     const flashOpacity = useSharedValue(0);
@@ -38,6 +46,12 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
 
     const handleSwipe = useCallback(
         (direction: 'left' | 'right') => {
+            const topCard = cards[0];
+            if (direction === 'right' && topCard?.likesYou) {
+                setMatchCelebration(topCard);
+                return; // Wait for user to dismiss celebration
+            }
+
             setCards((prev) => {
                 if (prev.length === 0) return prev;
                 const [top, ...rest] = prev;
@@ -50,8 +64,19 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
             flashOpacity.value = withTiming(0, { duration: 600 });
             setTimeout(() => setSwipeAction(null), 700);
         },
-        [flashOpacity]
+        [cards, flashOpacity]
     );
+
+    const dismissMatch = () => {
+        if (!matchCelebration) return;
+        setCards((prev) => {
+            if (prev.length === 0) return prev;
+            const [top, ...rest] = prev;
+            setRemoved((r) => [top, ...r]);
+            return rest;
+        });
+        setMatchCelebration(null);
+    };
 
     const handleReset = () => {
         setCards([...removed].reverse());
@@ -192,6 +217,64 @@ export default function FelfedezesSimulator({ bottomInset = 0 }: FelfedezesSimul
                             },
                         ]}
                     />
+                )}
+
+                {/* Match Celebration Overlay */}
+                {matchCelebration && (
+                    <Animated.View
+                        entering={FadeIn.duration(400)}
+                        className="absolute inset-0 z-50 items-center justify-center px-6"
+                        style={{ backgroundColor: 'rgba(11,13,23,0.95)' }}
+                    >
+                        <Animated.Text
+                            entering={ZoomIn.delay(300).springify().damping(12)}
+                            className="text-4xl font-extrabold text-white text-center mb-10"
+                            style={{ 
+                                textShadowColor: 'rgba(236,72,153,0.8)', 
+                                textShadowOffset: {width: 0, height: 0}, 
+                                textShadowRadius: 30,
+                                color: '#fbcfe8',
+                                fontStyle: 'italic',
+                                letterSpacing: 2
+                            }}
+                        >
+                            IT'S A MATCH!
+                        </Animated.Text>
+
+                        {/* Avatars */}
+                        <View className="flex-row items-center justify-center mb-12">
+                            <Animated.View entering={ZoomIn.delay(500).springify()} className="w-28 h-28 rounded-full border-4 border-[#0B0D17] overflow-hidden z-10" style={{ right: -20 }}>
+                                <Image source={{ uri: RAMA_AVATAR }} className="w-full h-full" resizeMode="cover" />
+                            </Animated.View>
+                            <Animated.View entering={ZoomIn.delay(700).springify()} className="w-28 h-28 rounded-full border-4 border-[#0B0D17] overflow-hidden">
+                                <Image source={{ uri: matchCelebration.avatarUrl }} className="w-full h-full" resizeMode="cover" />
+                            </Animated.View>
+                        </View>
+
+                        <Animated.Text entering={FadeInDown.delay(900)} className="text-gray-300 text-center mb-12 px-4">
+                            You and {matchCelebration.displayName} liked each other. Don't keep them waiting!
+                        </Animated.Text>
+
+                        <Animated.View entering={FadeInDown.delay(1000)} className="w-full gap-4">
+                            <Pressable
+                                onPress={() => {
+                                    setMatchCelebration(null);
+                                    navigation.navigate('ChatDetail', {
+                                        chatId: `match-${matchCelebration.id}`,
+                                        user: { name: matchCelebration.displayName, avatar: matchCelebration.avatarUrl, handle: `@${matchCelebration.displayName.toLowerCase().replace(/\s+/g,'')}` }
+                                    });
+                                }}
+                                className="w-full rounded-2xl py-4 items-center justify-center"
+                                style={{ backgroundColor: '#ec4899', shadowColor: '#ec4899', shadowOpacity: 0.4, shadowRadius: 15, elevation: 5 }}
+                            >
+                                <Text className="font-bold text-white text-lg">Send a Message</Text>
+                            </Pressable>
+
+                            <Pressable onPress={dismissMatch} className="w-full rounded-2xl py-4 items-center justify-center border border-white/20">
+                                <Text className="font-semibold text-gray-300 text-lg">Keep Swiping</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </Animated.View>
                 )}
             </View>
         </SafeAreaView>

@@ -9,12 +9,14 @@ import {
     Platform,
     Pressable,
     StyleSheet,
+    Modal,
+    Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
 
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 import { messagesSeed } from '../data/chatData';
@@ -22,13 +24,74 @@ import { Message } from '../types/chat';
 
 export default function ChatDetailScreen() {
     const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const { chatId, user } = route.params || {};
+    const { chatId, user, isGroup, members } = route.params || {};
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
+    const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+    const [showGroupInfo, setShowGroupInfo] = useState(false);
+
+    const handleSafetyAction = (action: string) => {
+        Alert.alert(
+            `Confirm ${action}`,
+            `Are you sure you want to ${action.toLowerCase()} ${user?.name}?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Yes", 
+                    style: "destructive",
+                    onPress: () => {
+                        setSafetyModalVisible(false);
+                        navigation.goBack();
+                    }
+                }
+            ]
+        );
+    };
+
+    const renderEmptyComponent = () => {
+        return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100, transform: [{ scaleY: -1 }] }}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 4 }}>
+                    You matched with {user?.name}
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 32 }}>
+                    Just now
+                </Text>
+
+                <Pressable
+                    onPress={() => {
+                        navigation.navigate('ExpandedProfile', {
+                            user: {
+                                displayName: user?.name,
+                                avatarUrl: user?.avatar,
+                                age: 24,
+                                distance: 'Nearby'
+                            }
+                        });
+                    }}
+                    style={{
+                        width: 160,
+                        height: 160,
+                        borderRadius: 80,
+                        borderWidth: 3,
+                        borderColor: '#8b5cf6',
+                        overflow: 'hidden',
+                        shadowColor: '#8b5cf6',
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 20,
+                        elevation: 10,
+                    }}
+                >
+                    <ImageWithFallback source={user?.avatar} alt={user?.name} style={{ width: '100%', height: '100%' }} />
+                </Pressable>
+            </View>
+        );
+    };
 
     useEffect(() => {
         if (chatId && messagesSeed[chatId]) {
@@ -112,18 +175,29 @@ export default function ChatDetailScreen() {
                     <Ionicons name="arrow-back" size={20} color="#fff" />
                 </Pressable>
 
-                <View style={styles.headerProfile}>
+                <Pressable 
+                    onPress={() => {
+                        if (isGroup) {
+                            setShowGroupInfo(true);
+                        } else {
+                            navigation.navigate('ExpandedProfile', { user: { displayName: user?.name, avatarUrl: user?.avatar, handle: user?.handle, age: 24, distance: 'Nearby' } });
+                        }
+                    }} 
+                    style={styles.headerProfile}
+                >
                     <View style={styles.headerAvatar}>
                         <ImageWithFallback source={user?.avatar} alt={user?.name} style={{ width: '100%', height: '100%' }} />
                     </View>
                     <View>
                         <Text style={styles.headerName}>{user?.name}</Text>
-                        <Text style={styles.headerHandle}>{user?.handle}</Text>
+                        <Text style={styles.headerHandle}>{isGroup ? `${members?.length || 0} tagok` : user?.handle}</Text>
                     </View>
-                </View>
+                </Pressable>
 
-                {/* Placeholder for video/call icons */}
-                <View style={{ width: 40 }} />
+                {/* Safety Toolkit Button */}
+                <Pressable onPress={() => setSafetyModalVisible(true)} style={{ width: 40, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
+                </Pressable>
             </View>
 
             {/* Message List */}
@@ -132,8 +206,12 @@ export default function ChatDetailScreen() {
                 keyExtractor={(item) => item.id}
                 inverted
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 16 }}
+                contentContainerStyle={[
+                    { paddingHorizontal: 16, paddingBottom: 16, paddingTop: 16 },
+                    messages.length === 0 && { flex: 1 }
+                ]}
                 renderItem={renderMessage}
+                ListEmptyComponent={renderEmptyComponent}
             />
 
             {/* Input Area */}
@@ -168,6 +246,110 @@ export default function ChatDetailScreen() {
                     </Pressable>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* Safety Toolkit Modal */}
+            <Modal
+                visible={safetyModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSafetyModalVisible(false)}
+            >
+                <Pressable 
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} 
+                    onPress={() => setSafetyModalVisible(false)}
+                >
+                    <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Safety Toolkit</Text>
+                            <Pressable hitSlop={10} onPress={() => setSafetyModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="rgba(255,255,255,0.5)" />
+                            </Pressable>
+                        </View>
+
+                        <Pressable style={styles.modalOption} onPress={() => handleSafetyAction('Unmatch')}>
+                            <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                                <Ionicons name="person-remove-outline" size={20} color="#ef4444" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalOptionTitle}>Unmatch {user?.name}</Text>
+                                <Text style={styles.modalOptionSub}>No longer interested? Remove them from your matches.</Text>
+                            </View>
+                        </Pressable>
+
+                        <Pressable style={styles.modalOption} onPress={() => handleSafetyAction('Block')}>
+                            <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                                <Ionicons name="ban-outline" size={20} color="#ef4444" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalOptionTitle}>Block {user?.name}</Text>
+                                <Text style={styles.modalOptionSub}>You won't see each other and they won't be able to contact you.</Text>
+                            </View>
+                        </Pressable>
+
+                        <Pressable style={styles.modalOption} onPress={() => handleSafetyAction('Report')}>
+                            <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                                <Ionicons name="warning-outline" size={20} color="#ef4444" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalOptionTitle}>Report {user?.name}</Text>
+                                <Text style={styles.modalOptionSub}>Report inappropriate behavior or policy violations.</Text>
+                            </View>
+                        </Pressable>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            {/* Group Info Modal */}
+            <Modal
+                visible={showGroupInfo}
+                transparent={true}
+                animationType="none"
+                onRequestClose={() => setShowGroupInfo(false)}
+            >
+                <Pressable 
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} 
+                    onPress={() => setShowGroupInfo(false)}
+                >
+                    <Animated.View 
+                        entering={SlideInDown.springify().damping(20)}
+                        style={[styles.modalContent, { backgroundColor: 'rgba(18,22,40,0.95)' }]} 
+                        onStartShouldSetResponder={() => true}
+                    >
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Group Info</Text>
+                            <Pressable hitSlop={10} onPress={() => setShowGroupInfo(false)}>
+                                <Ionicons name="close" size={24} color="rgba(255,255,255,0.5)" />
+                            </Pressable>
+                        </View>
+                        <TextInput
+                            style={styles.groupNameInput}
+                            placeholder="Group Name"
+                            placeholderTextColor="rgba(255,255,255,0.3)"
+                            defaultValue={user?.name}
+                        />
+                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 24, marginBottom: 12, textTransform: 'uppercase', fontWeight: 'bold' }}>
+                            {members?.length || 0} Members
+                        </Text>
+                        <FlatList
+                            data={members}
+                            keyExtractor={(item) => String(item.id)}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => (
+                                <View style={styles.modalOption}>
+                                    <View style={[styles.avatarRing, { width: 36, height: 36, borderRadius: 18, marginRight: 0 }]}>
+                                        <ImageWithFallback source={item.avatar} alt={item.name} style={{ width: '100%', height: '100%' }} />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.modalOptionTitle, { color: '#fff', fontSize: 16, marginBottom: 2 }]}>{item.name}</Text>
+                                        <Text style={[styles.modalOptionSub, { color: 'rgba(255,255,255,0.5)' }]}>{item.handle}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            style={{ maxHeight: 300 }}
+                        />
+                    </Animated.View>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -290,5 +472,61 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         overflow: 'hidden',
         marginBottom: 2,
+    },
+    modalContent: {
+        backgroundColor: 'rgba(15,23,42,0.95)',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        paddingBottom: 40,
+        borderTopWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    modalOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+        gap: 16,
+    },
+    modalOptionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalOptionTitle: {
+        color: '#f87171',
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    modalOptionSub: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        lineHeight: 16,
+    },
+    groupNameInput: {
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 16,
+        color: '#fff',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        fontSize: 16,
     },
 });

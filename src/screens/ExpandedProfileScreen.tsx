@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Animated, { FadeIn, FadeOut, ZoomIn, ZoomOut, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
@@ -153,7 +153,7 @@ function EventTicketCard() {
 }
 
 function OptionsMenu({ onClose }: { onClose: () => void }) {
-  const items = ["Report Profile", "Block User", "Share Profile", "Unmatch"];
+  const items = ["Report Profile", "Block User", "Share Profile"];
   return (
     <Animated.View
         entering={ZoomIn.duration(300)}
@@ -173,7 +173,10 @@ function OptionsMenu({ onClose }: { onClose: () => void }) {
       {items.map((item, i) => (
         <TouchableOpacity
             key={item}
-            onPress={onClose}
+            onPress={() => {
+                Alert.alert('Success', 'Action completed.');
+                onClose();
+            }}
             className="w-full px-4 py-3 flex-row items-center"
             style={{
                 borderBottomWidth: i < items.length - 1 ? 1 : 0,
@@ -263,13 +266,9 @@ export default function ExpandedProfileScreen() {
             </View>
           </View>
 
-          <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-center z-20" style={{ transform: [{ translateY: 40 }], gap: 24 }}>
+          <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-center z-20" style={{ transform: [{ translateY: 40 }], gap: 48 }}>
             <AnimatedTouchableOpacity onPress={() => handleAction("pass")} className="w-16 h-16 rounded-full items-center justify-center border" style={{ backgroundColor: liked === "pass" ? "rgba(239,68,68,0.4)" : "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.45)", shadowColor: "#ef4444", shadowOpacity: 0.45, shadowRadius: 24, elevation: 8, transform: [{scale: 1}] }}>
                 <Ionicons name="close" size={32} color="#f87171" style={{ fontWeight: 'bold' }} />
-            </AnimatedTouchableOpacity>
-            
-            <AnimatedTouchableOpacity onPress={() => handleAction("super")} className="w-12 h-12 rounded-full items-center justify-center border" style={{ backgroundColor: liked === "super" ? "rgba(168,85,247,0.5)" : "rgba(168,85,247,0.15)", borderColor: "rgba(168,85,247,0.5)", shadowColor: "#a855f7", shadowOpacity: 0.5, shadowRadius: 20, elevation: 8, transform: [{scale: 1}] }}>
-                <Ionicons name={liked === "super" ? "star" : "star-outline"} size={24} color="#c084fc" />
             </AnimatedTouchableOpacity>
 
             <AnimatedTouchableOpacity onPress={() => handleAction("like")} className="w-16 h-16 rounded-full items-center justify-center border" style={{ backgroundColor: liked === "like" ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.12)", borderColor: "rgba(34,197,94,0.45)", shadowColor: "#22c55e", shadowOpacity: 0.5, shadowRadius: 24, elevation: 8, transform: [{scale: 1}] }}>

@@ -7,8 +7,9 @@ import {
     Pressable,
     StyleSheet,
     Switch,
+    Modal,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Svg, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import Animated, {
@@ -22,16 +23,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
+import EditProfileModal from '../components/modals/EditProfileModal';
 
 const RAMA_AVATAR = "https://images.unsplash.com/photo-1769142899668-5816cf1d920a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMG1hbiUyMGF2YXRhciUyMHByb2ZpbGUlMjBwaG90b3xlbnwxfHx8fDE3NzYyOTI0NzR8MA&ixlib=rb-4.1.0&q=80&w=1080";
 
+const AVAILABLE_TAGS = ['Techno', 'House', 'Trance', 'Night Owl', 'Raves', 'Festivals', 'DJ', 'Producer', 'Vibe Chaser'];
+
 /* ── Animated Button Primitive ──────────────────────────── */
-function AnimatedBtn({ onPress, style, children, scaleDownTo = 0.92, ...rest }: any) {
+function AnimatedBtn({ onPress, style, containerStyle, children, scaleDownTo = 0.92, ...rest }: any) {
     const scale = useSharedValue(1);
     const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
     return (
-        <Animated.View style={animStyle}>
+        <Animated.View style={[containerStyle, animStyle]}>
             <Pressable
                 onPressIn={() => { scale.value = withTiming(scaleDownTo, { duration: 100 }); }}
                 onPressOut={() => { scale.value = withTiming(1, { duration: 150 }); }}
@@ -127,6 +131,58 @@ function SettingsDrawer({ onClose }: { onClose: () => void }) {
     );
 }
 
+/* ── Notifications Modal ──────────────────────────── */
+function NotificationsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+    const insets = useSafeAreaInsets();
+    
+    // Mock notifications
+    const notifications = [
+        { id: 1, text: "Zuzia liked your profile", type: 'like', time: '10m ago', unread: true },
+        { id: 2, text: "Warehouse Techno Party starts in 2 hours", type: 'event', time: '2h ago', unread: true },
+        { id: 3, text: "New match with Dano", type: 'match', time: '5h ago', unread: false },
+        { id: 4, text: "Someone viewed your profile", type: 'view', time: '1d ago', unread: false },
+    ];
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={onClose}
+        >
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+                <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                <View style={[styles.modalContent, { paddingBottom: insets.bottom + 24 }]}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Notifications</Text>
+                        <AnimatedBtn onPress={onClose} style={styles.iconBtn}>
+                            <Ionicons name="close" size={16} color="#9ca3af" />
+                        </AnimatedBtn>
+                    </View>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        {notifications.map((notif) => (
+                            <View key={notif.id} style={styles.notificationItem}>
+                                <View style={[styles.notificationIcon, notif.type === 'like' ? { backgroundColor: 'rgba(244,63,94,0.1)' } : notif.type === 'event' ? { backgroundColor: 'rgba(168,85,247,0.1)' } : { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+                                    <Ionicons 
+                                        name={notif.type === 'like' ? 'heart' : notif.type === 'event' ? 'calendar' : notif.type === 'match' ? 'flash' : 'eye'} 
+                                        size={20} 
+                                        color={notif.type === 'like' ? '#f43f5e' : notif.type === 'event' ? '#a855f7' : '#3b82f6'} 
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.notificationText, notif.unread && { fontWeight: '700', color: '#fff' }]}>{notif.text}</Text>
+                                    <Text style={styles.notificationTime}>{notif.time}</Text>
+                                </View>
+                                {notif.unread && <View style={styles.unreadDot} />}
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
 /* ── List Item (Tags, Anthem, etc.) ──────────────────────────── */
 function ListItem({ icon, iconColor, iconBg, label, right, glow, onClick }: { icon: any; iconColor: string; iconBg: string; label: string; right: React.ReactNode; glow?: string; onClick?: () => void }) {
     return (
@@ -150,24 +206,55 @@ function ListItem({ icon, iconColor, iconBg, label, right, glow, onClick }: { ic
 /* ── Main Dashboard Screen ──────────────────────────── */
 export default function ProfileDashboardScreen() {
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
     const insets = useSafeAreaInsets();
+    
+    // State logic
     const [showSettings, setShowSettings] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [showEditProfile, setShowEditProfile] = useState(false);
+
+    React.useEffect(() => {
+        if (route.params?.openNotifications) {
+            setShowNotifications(true);
+            navigation.setParams({ openNotifications: undefined });
+        }
+        if (route.params?.openSettings) {
+            setShowSettings(true);
+            navigation.setParams({ openSettings: undefined });
+        }
+    }, [route.params]);
+    
+    const [userProfile, setUserProfile] = useState<any>({ 
+        displayName: 'Rama', 
+        age: 24, 
+        handle: '@rama.beats', 
+        bio: 'Chasing the 4AM feeling...', 
+        tags: ['Techno', 'Night Owl', 'Raves'],
+        avatarUrl: RAMA_AVATAR
+    });
 
     const completeness = 85;
-    const vibeTagColors = [
-        { label: 'Techno', color: '#c084fc' },
-        { label: 'Night Owl', color: '#60a5fa' },
-        { label: 'Raves', color: '#a78bfa' },
-    ];
+    
+    // Fallback tag colors
+    const vibeTagColors: any = {
+        'Techno': '#c084fc',
+        'House': '#60a5fa',
+        'Trance': '#34d399',
+        'Night Owl': '#f472b6',
+        'Raves': '#fbbf24',
+        'Festivals': '#fb923c',
+        'DJ': '#818cf8',
+        'Producer': '#94a3b8',
+        'Vibe Chaser': '#f87171'
+    };
 
-    // Mock payload to navigate to ExpandedProfile with
     const handlePreview = () => {
         navigation.navigate('ExpandedProfile', { 
             user: { 
-                name: 'Rama', 
-                age: 24, 
-                avatar: RAMA_AVATAR, 
-                distance: 'Bandung, Indonesia' 
+                ...(userProfile || {}),
+                avatar: userProfile?.avatarUrl || RAMA_AVATAR, 
+                distance: 'Nearby' 
             } 
         });
     };
@@ -180,11 +267,9 @@ export default function ProfileDashboardScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                     <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}>My Profile</Text>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <AnimatedBtn style={styles.iconBtn}>
-                            <Ionicons name="notifications-outline" size={16} color="#9ca3af" />
-                        </AnimatedBtn>
-                        <AnimatedBtn onPress={() => setShowSettings(true)} style={styles.iconBtn}>
-                            <Ionicons name="settings-outline" size={16} color="#9ca3af" />
+                        <AnimatedBtn onPress={() => setShowNotifications(true)} style={styles.iconBtn}>
+                            <Ionicons name="notifications-outline" size={18} color="#9ca3af" />
+                            <View style={styles.headerUnreadDot} />
                         </AnimatedBtn>
                     </View>
                 </View>
@@ -194,15 +279,15 @@ export default function ProfileDashboardScreen() {
                     <View style={{ position: 'relative', width: 120, height: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                         <ProgressRing percent={completeness} radius={52} stroke={3.5} />
                         <View style={styles.avatarContainer}>
-                            <ImageWithFallback source={RAMA_AVATAR} alt="Rama" style={{ width: '100%', height: '100%' }} />
+                            <ImageWithFallback source={userProfile?.avatarUrl || RAMA_AVATAR} alt={userProfile?.displayName || 'Rama'} style={{ width: '100%', height: '100%' }} />
                         </View>
                         <View style={styles.percentBadge}>
                             <View style={styles.percentDot} />
                             <Text style={{ color: '#fbbf24', fontSize: 9, fontWeight: 'bold' }}>{completeness}% Complete</Text>
                         </View>
                     </View>
-                    <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: -0.4 }}>Rama, 24</Text>
-                    <Text style={{ color: '#4b5563', fontSize: 14, marginTop: 2 }}>@rama.beats</Text>
+                    <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: -0.4 }}>{userProfile?.displayName || 'Rama'}, {userProfile?.age || 24}</Text>
+                    <Text style={{ color: '#4b5563', fontSize: 14, marginTop: 2 }}>{userProfile?.handle || '@rama.beats'}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
                         <Ionicons name="location" size={12} color="#60a5fa" />
                         <Text style={{ color: '#6b7280', fontSize: 12 }}>Bandung, Indonesia</Text>
@@ -216,15 +301,15 @@ export default function ProfileDashboardScreen() {
                     <StatPill icon="star" value="7" label="Super Likes" color="#c084fc" />
                 </View>
 
-                {/* Action Row */}
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                    <AnimatedBtn onPress={() => setShowSettings(true)} style={[styles.actionBtnBlock, { flex: 1 }]} scaleDownTo={0.94}>
-                        <Ionicons name="options-outline" size={20} color="#9ca3af" />
+                {/* Action Row - 3 Square Buttons */}
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16, height: 90, width: '100%' }}>
+                    <AnimatedBtn onPress={() => setShowSettings(true)} containerStyle={{ flex: 1 }} style={styles.actionBtnSquare} scaleDownTo={0.94}>
+                        <Ionicons name="settings-outline" size={24} color="#9ca3af" />
                         <Text style={{ color: '#9ca3af', fontSize: 12, fontWeight: '500', marginTop: 8 }}>Settings</Text>
                     </AnimatedBtn>
 
                     {/* Edit Profile (Gradient) */}
-                    <AnimatedBtn style={[styles.actionBtnBlockGlow, { flex: 1.6 }]} scaleDownTo={0.94}>
+                    <AnimatedBtn onPress={() => setShowEditProfile(true)} containerStyle={{ flex: 1.3 }} style={styles.actionBtnSquareGlow} scaleDownTo={0.94}>
                         <LinearGradient
                             colors={['rgba(59,130,246,0.18)', 'rgba(139,92,246,0.18)']}
                             start={{ x: 0, y: 0 }}
@@ -243,8 +328,8 @@ export default function ProfileDashboardScreen() {
                         <Text style={{ color: '#93c5fd', fontSize: 12, fontWeight: 'bold' }}>Edit Profile</Text>
                     </AnimatedBtn>
 
-                    <AnimatedBtn onPress={handlePreview} style={[styles.actionBtnBlock, { flex: 1 }]} scaleDownTo={0.94}>
-                        <Ionicons name="eye-outline" size={20} color="#9ca3af" />
+                    <AnimatedBtn onPress={handlePreview} containerStyle={{ flex: 1 }} style={styles.actionBtnSquare} scaleDownTo={0.94}>
+                        <Ionicons name="eye-outline" size={24} color="#9ca3af" />
                         <Text style={{ color: '#9ca3af', fontSize: 12, fontWeight: '500', marginTop: 8 }}>Preview</Text>
                     </AnimatedBtn>
                 </View>
@@ -292,13 +377,17 @@ export default function ProfileDashboardScreen() {
                 <View style={{ gap: 10, marginBottom: 12 }}>
                     <ListItem 
                         icon="pricetag-outline" iconColor="#c084fc" iconBg="rgba(192,132,252,0.15)" label="My Vibe Tags" 
+                        onClick={() => setShowEditProfile(true)}
                         right={
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                {vibeTagColors.map((t) => (
-                                    <View key={t.label} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1, borderColor: `${t.color}50`, backgroundColor: `${t.color}15` }}>
-                                        <Text style={{ color: t.color, fontSize: 9, fontWeight: '600' }}>{t.label}</Text>
-                                    </View>
-                                ))}
+                                {(userProfile?.tags || []).slice(0, 3).map((tag: string) => {
+                                    const color = vibeTagColors[tag] || '#60a5fa';
+                                    return (
+                                        <View key={tag} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1, borderColor: `${color}50`, backgroundColor: `${color}15` }}>
+                                            <Text style={{ color: color, fontSize: 9, fontWeight: '600' }}>{tag}</Text>
+                                        </View>
+                                    );
+                                })}
                                 <Ionicons name="chevron-forward" size={16} color="#374151" />
                             </View>
                         } 
@@ -329,16 +418,6 @@ export default function ProfileDashboardScreen() {
                             </View>
                         } 
                     />
-                    <ListItem 
-                        icon="notifications-outline" iconColor="#f59e0b" iconBg="rgba(245,158,11,0.12)" label="Notifications" 
-                        right={
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#f59e0b', shadowColor: '#f59e0b', shadowOpacity: 0.8, shadowRadius: 6, elevation: 2 }} />
-                                <Text style={{ color: '#fbbf24', fontSize: 10, fontWeight: '500' }}>3 new</Text>
-                                <Ionicons name="chevron-forward" size={16} color="#374151" />
-                            </View>
-                        } 
-                    />
                 </View>
 
                 {/* Log Out */}
@@ -349,22 +428,39 @@ export default function ProfileDashboardScreen() {
 
             </ScrollView>
 
-            {/* Settings Drawer overlay */}
+            {/* Modals & Overlays */}
             {showSettings && <SettingsDrawer onClose={() => setShowSettings(false)} />}
+            <NotificationsModal visible={showNotifications} onClose={() => setShowNotifications(false)} />
+            <EditProfileModal 
+                visible={showEditProfile} 
+                onClose={() => setShowEditProfile(false)} 
+            />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     iconBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 16,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.05)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.09)',
+        position: 'relative',
+    },
+    headerUnreadDot: {
+        position: 'absolute',
+        top: 10,
+        right: 12,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#ef4444',
+        borderWidth: 2,
+        borderColor: '#0B0D17',
     },
     avatarContainer: {
         width: 104,
@@ -413,17 +509,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.07)',
     },
-    actionBtnBlock: {
+    actionBtnSquare: {
         alignItems: 'center',
-        paddingVertical: 14,
+        justifyContent: 'center',
         borderRadius: 24,
         backgroundColor: 'rgba(255,255,255,0.04)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.09)',
+        height: '100%',
     },
-    actionBtnBlockGlow: {
+    actionBtnSquareGlow: {
         alignItems: 'center',
-        paddingVertical: 14,
+        justifyContent: 'center',
         borderRadius: 24,
         borderWidth: 1,
         borderColor: 'rgba(99,102,241,0.4)',
@@ -433,6 +530,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 24,
         elevation: 6,
+        height: '100%',
     },
     editIconBox: {
         width: 32,
@@ -539,5 +637,65 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.07)',
         backgroundColor: 'rgba(255,255,255,0.03)',
+    },
+    // Modal Shared
+    modalContent: {
+        backgroundColor: '#111827',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        paddingTop: 24,
+        paddingHorizontal: 20,
+        maxHeight: '80%',
+        borderTopWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    // Notifications styles
+    notificationItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+        gap: 12,
+    },
+    notificationIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    notificationText: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 4,
+    },
+    notificationTime: {
+        color: '#6b7280',
+        fontSize: 11,
+    },
+    unreadDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#3b82f6',
+        marginTop: 6,
     },
 });

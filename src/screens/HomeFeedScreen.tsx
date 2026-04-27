@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Event } from '../types/event';
+import { PageHeader } from '../components/ui/PageHeader';
 
 // ---------------------------------------------------------------------------
 // Image constants
@@ -261,23 +262,8 @@ export default function HomeFeedScreen({ navigation }: any) {
 
     return (
         <View className="flex-1 bg-[#0B0D17]">
-            {/* Top search bar — stays above the scroll area */}
             <SafeAreaView edges={['top']} className="bg-[#0B0D17]">
-                <View className="px-4 pb-3">
-                    <View
-                        className="flex-row items-center rounded-2xl border px-4 py-3.5"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }}
-                    >
-                        <Ionicons name="search" size={18} color="#9ca3af" style={{ marginRight: 10 }} />
-                        <TextInput
-                            className="flex-1 text-base text-white py-0"
-                            placeholder="Search events, artists, venues..."
-                            placeholderTextColor="rgba(255,255,255,0.35)"
-                            value={searchQuery}
-                            onChangeText={handleSearchChange}
-                        />
-                    </View>
-                </View>
+                <PageHeader />
             </SafeAreaView>
 
             <ScrollView

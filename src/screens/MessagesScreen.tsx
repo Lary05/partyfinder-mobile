@@ -8,10 +8,10 @@ import React, { useState } from 'react';
 import {
     View,
     Text,
-    TextInput,
     FlatList,
     Pressable,
     StyleSheet,
+    Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -48,6 +48,8 @@ interface Chat {
     unread: number;
     online: boolean;
     read: boolean;
+    isGroup?: boolean;
+    members?: any[];
 }
 
 const chats: Chat[] = [
@@ -61,18 +63,21 @@ const chats: Chat[] = [
 
 // ─── Animated "View New Matches" button ────────────────────────────────────────
 // Replicates framer-motion's whileHover/whileTap scale with Reanimated.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 function NewMatchesButton({ onPress }: { onPress: () => void }) {
     const scale = useSharedValue(1);
     const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
     return (
-        <Animated.View style={[animStyle, styles.matchButtonWrapper]}>
-            <Pressable
+        <Animated.View entering={FadeInDown.duration(300)}>
+            <AnimatedPressable
                 onPressIn={() => { scale.value = withTiming(0.98, { duration: 100 }); }}
                 onPressOut={() => { scale.value = withTiming(1, { duration: 150 }); }}
                 onPress={onPress}
-                style={styles.matchButtonPressable}
+                style={[styles.matchButtonWrapper, animStyle]}
             >
+                <View style={styles.matchButtonPressable}>
                 {/* Gradient replaces: background: linear-gradient(120deg, ...) */}
                 <LinearGradient
                     colors={['rgba(59,130,246,0.14)', 'rgba(139,92,246,0.14)']}
@@ -121,17 +126,20 @@ function NewMatchesButton({ onPress }: { onPress: () => void }) {
                     {/* Ionicons: chevron-forward (ChevronRight) */}
                     <Ionicons name="chevron-forward" size={16} color="#a78bfa" />
                 </View>
-            </Pressable>
+                </View>
+            </AnimatedPressable>
         </Animated.View>
     );
 }
 
 // ─── Individual chat row ────────────────────────────────────────────────────────
-function ChatRow({ chat, index, isActive, onPress }: {
+function ChatRow({ chat, index, isActive, onPress, isCreatingGroup, isSelected }: {
     chat: Chat;
     index: number;
     isActive: boolean;
     onPress: () => void;
+    isCreatingGroup?: boolean;
+    isSelected?: boolean;
 }) {
     const isOutgoing = chat.lastMessage.startsWith('You:');
 
@@ -146,11 +154,18 @@ function ChatRow({ chat, index, isActive, onPress }: {
                 ]}
             >
                 {/* Avatar + online dot */}
-                <View style={{ position: 'relative', flexShrink: 0 }}>
-                    <View style={styles.avatarRing}>
-                        <ImageWithFallback source={chat.avatar} alt={chat.name} style={{ width: '100%', height: '100%' }} />
+                <View style={{ position: 'relative', flexShrink: 0, flexDirection: 'row', alignItems: 'center' }}>
+                    {isCreatingGroup && (
+                        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: isSelected ? '#3b82f6' : 'rgba(255,255,255,0.2)', backgroundColor: isSelected ? '#3b82f6' : 'transparent', marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        </View>
+                    )}
+                    <View>
+                        <View style={styles.avatarRing}>
+                            <ImageWithFallback source={chat.avatar} alt={chat.name} style={{ width: '100%', height: '100%' }} />
+                        </View>
+                        {chat.online && <View style={styles.onlineDot} />}
                     </View>
-                    {chat.online && <View style={styles.onlineDot} />}
                 </View>
 
                 {/* Name + last message */}
@@ -215,67 +230,109 @@ export default function MessagesScreen() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
 
-    const [query, setQuery] = useState('');
     const [activeChat, setActiveChat] = useState<number | null>(null);
+    const [chatsList, setChatsList] = useState<Chat[]>(chats);
+    const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+    const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
 
     const tabBarReserve = 76 + insets.bottom;
+
+    const toggleUserSelection = (userId: number) => {
+        if (selectedUsers.includes(userId)) {
+            setSelectedUsers(selectedUsers.filter(id => id !== userId));
+        } else {
+            setSelectedUsers([...selectedUsers, userId]);
+        }
+    };
+
+    const handleCreateGroup = () => {
+        if (selectedUsers.length < 2) {
+            Alert.alert('Hiba', 'Choose at least 2 friends to create a group.');
+            return;
+        }
+
+        const members = selectedUsers.map(id => chatsList.find(c => c.id === id)).filter(Boolean);
+        const newGroupChat: Chat = {
+            id: Date.now(),
+            name: "New Group",
+            handle: "Group Chat",
+            avatar: "https://images.unsplash.com/photo-1543807535-eceef0bc6599?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncm91cHxlbnwxfHx8fDE3NzY5NjgwODZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+            lastMessage: "Group created",
+            time: "Just now",
+            unread: 0,
+            online: true,
+            read: true,
+            isGroup: true,
+            members: members
+        };
+
+        setChatsList([newGroupChat, ...chatsList]);
+        setIsCreatingGroup(false);
+        setSelectedUsers([]);
+
+        navigation.navigate('ChatDetail', {
+            chatId: String(newGroupChat.id),
+            user: { name: newGroupChat.name, avatar: newGroupChat.avatar, handle: newGroupChat.handle },
+            isGroup: true,
+            members: members
+        });
+    };
 
     // DEV_ONLY: Temporary bypass for UI development.
     // if (isGuest) {
     //     return <LoginRequiredShield />;
     // }
 
-    const filtered = chats.filter(
-        (c) =>
-            c.name.toLowerCase().includes(query.toLowerCase()) ||
-            c.handle.toLowerCase().includes(query.toLowerCase()),
-    );
-
-    const onlineCount = chats.filter((c) => c.online).length;
+    const onlineCount = chatsList.filter((c) => c.online).length;
 
     return (
         <SafeAreaView edges={['top']} className="flex-1 bg-[#0B0D17]">
             {/* ── Header ── */}
             <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 12 }}>
-                {/* Title row */}
-                <View className="flex-row items-center justify-between" style={{ marginBottom: 20 }}>
-                    <Text style={{ color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.5 }}>
-                        Messages
-                    </Text>
-                    {/* Online pill */}
-                    <View style={styles.onlinePill}>
-                        <View style={styles.onlinePillDot} />
-                        <Text style={{ color: '#93c5fd', fontSize: 12, fontWeight: '500' }}>
-                            {onlineCount} online
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Search bar */}
-                <View style={styles.searchBar}>
-                    {/* Ionicons: search (Search) */}
-                    <Ionicons name="search" size={16} color="rgba(255,255,255,0.3)" style={{ flexShrink: 0 }} />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search by @username..."
-                        placeholderTextColor="rgba(255,255,255,0.2)"
-                        value={query}
-                        onChangeText={setQuery}
-                    />
-                    {query.length > 0 && (
-                        <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                            <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>✕</Text>
+                {isCreatingGroup ? (
+                    <View className="flex-row items-center justify-between" style={{ marginBottom: 20 }}>
+                        <Pressable onPress={() => { setIsCreatingGroup(false); setSelectedUsers([]); }}>
+                            <Text style={{ color: '#9ca3af', fontSize: 16 }}>Cancel</Text>
                         </Pressable>
-                    )}
-                </View>
+                        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                            Select Friends
+                        </Text>
+                        <Pressable onPress={handleCreateGroup}>
+                            <Text style={{ color: selectedUsers.length >= 2 ? '#3b82f6' : 'rgba(59,130,246,0.5)', fontSize: 16, fontWeight: '600' }}>
+                                Create {selectedUsers.length > 0 ? `(${selectedUsers.length})` : ''}
+                            </Text>
+                        </Pressable>
+                    </View>
+                ) : (
+                    <View className="flex-row items-center justify-between" style={{ marginBottom: 20 }}>
+                        <Text style={{ color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.5 }}>
+                            Messages
+                        </Text>
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
+                            {/* Online pill */}
+                            <View style={styles.onlinePill}>
+                                <View style={styles.onlinePillDot} />
+                                <Text style={{ color: '#93c5fd', fontSize: 12, fontWeight: '500' }}>
+                                    {onlineCount} online
+                                </Text>
+                            </View>
+                            <Pressable 
+                                style={{width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'}}
+                                onPress={() => setIsCreatingGroup(true)}
+                            >
+                                <Ionicons name="create-outline" size={18} color="#fff" />
+                            </Pressable>
+                        </View>
+                    </View>
+                )}
 
                 {/* "View New Matches" button */}
-                <NewMatchesButton onPress={() => navigation.navigate('NewMatches')} />
+                {!isCreatingGroup && <NewMatchesButton onPress={() => navigation.navigate('NewMatches')} />}
             </View>
 
             {/* ── Chat list ── */}
             <FlatList
-                data={filtered}
+                data={chatsList}
                 keyExtractor={(item) => String(item.id)}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarReserve + 16 }}
@@ -289,19 +346,29 @@ export default function MessagesScreen() {
                         chat={item}
                         index={index}
                         isActive={activeChat === item.id}
-                        onPress={() => navigation.navigate('ChatDetail', { 
-                            chatId: String(item.id), 
-                            user: { name: item.name, avatar: item.avatar, handle: item.handle } 
-                        })}
+                        isCreatingGroup={isCreatingGroup}
+                        isSelected={selectedUsers.includes(item.id)}
+                        onPress={() => {
+                            if (isCreatingGroup) {
+                                toggleUserSelection(item.id);
+                            } else {
+                                navigation.navigate('ChatDetail', { 
+                                    chatId: String(item.id), 
+                                    user: { name: item.name, avatar: item.avatar, handle: item.handle },
+                                    isGroup: item.isGroup,
+                                    members: item.members
+                                });
+                            }
+                        }}
                     />
                 )}
                 ListEmptyComponent={
                     <View className="items-center justify-center" style={{ paddingVertical: 64, gap: 12 }}>
                         <View style={styles.emptyIconBox}>
-                            <Ionicons name="search" size={24} color="rgba(255,255,255,0.2)" />
+                            <Ionicons name="chatbubbles" size={24} color="rgba(255,255,255,0.2)" />
                         </View>
                         <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
-                            No chats matching "{query}"
+                            No chats available
                         </Text>
                     </View>
                 }
@@ -440,25 +507,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.9,
         shadowRadius: 4,
     },
-    // Search bar
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderWidth: 1,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        borderColor: 'rgba(255,255,255,0.08)',
-        marginBottom: 16,
-    },
-    searchInput: {
-        flex: 1,
-        color: '#fff',
-        fontSize: 14,
-        padding: 0, // Remove default Android padding
-    },
+
     // Empty state
     emptyIconBox: {
         width: 56,
